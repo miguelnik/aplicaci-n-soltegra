@@ -74,7 +74,7 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
                 <td className="px-4 py-3 font-mono text-xs font-medium">
                   <div className="flex items-center gap-1.5">
                     {r.client_deadline && r.status !== "delivered" && r.status !== "cancelled" && (
-                      <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-red-500" title="Tiene fecha límite" />
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-red-500" />
                     )}
                     {r.reference_code ?? <span className="text-muted-foreground">Sin ref.</span>}
                   </div>
