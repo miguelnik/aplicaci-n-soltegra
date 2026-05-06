@@ -9,31 +9,35 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubmitButton } from "@/components/ui/submit-button";
 
-async function inviteUser(formData: FormData) {
+async function createUser(formData: FormData) {
   "use server";
   await requireAdmin();
 
   const email = formData.get("email") as string;
+  const password = formData.get("password") as string;
   const fullName = formData.get("full_name") as string;
   const orgId = formData.get("organization_id") as string;
   const role = (formData.get("role") as string) || "client";
 
+  if (!password || password.length < 6) {
+    redirect("/admin/usuarios/invitar?error=" + encodeURIComponent("La contraseña debe tener al menos 6 caracteres"));
+  }
+
   const adminClient = createSupabaseAdminClient();
 
-  const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
+  const { data: userData, error: createError } = await adminClient.auth.admin.createUser({
     email,
-    {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/set-password`,
-      data: { full_name: fullName, organization_id: orgId || null, role },
-    },
-  );
+    password,
+    email_confirm: true,
+    user_metadata: { full_name: fullName, organization_id: orgId || null, role },
+  });
 
-  if (inviteError || !inviteData.user) {
-    redirect("/admin/usuarios/invitar?error=" + encodeURIComponent(inviteError?.message ?? "Error desconocido"));
+  if (createError || !userData.user) {
+    redirect("/admin/usuarios/invitar?error=" + encodeURIComponent(createError?.message ?? "Error desconocido"));
   }
 
   const { error: profileError } = await adminClient.from("profiles").upsert({
-    id: inviteData.user.id,
+    id: userData.user.id,
     organization_id: role === "admin" ? null : orgId || null,
     role: role as "admin" | "client",
     full_name: fullName || null,
@@ -50,7 +54,7 @@ interface Props {
   searchParams: Promise<{ org?: string; error?: string }>;
 }
 
-export default async function InvitarUsuarioPage({ searchParams }: Props) {
+export default async function CrearUsuarioPage({ searchParams }: Props) {
   await requireAdmin();
   const { org: preselectedOrg, error } = await searchParams;
   const supabase = await createSupabaseServerClient();
@@ -63,9 +67,9 @@ export default async function InvitarUsuarioPage({ searchParams }: Props) {
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Invitar usuario</h1>
+        <h1 className="text-2xl font-bold">Crear usuario</h1>
         <p className="text-muted-foreground">
-          El usuario recibirá un email para establecer su contraseña.
+          Crea el usuario con email y contraseña. Tú le enviarás los datos de acceso.
         </p>
       </div>
 
@@ -87,7 +91,7 @@ export default async function InvitarUsuarioPage({ searchParams }: Props) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={inviteUser} className="space-y-4">
+          <form action={createUser} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">
                 Email <span className="text-destructive">*</span>
@@ -98,6 +102,19 @@ export default async function InvitarUsuarioPage({ searchParams }: Props) {
                 type="email"
                 required
                 placeholder="cliente@empresa.es"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">
+                Contraseña <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="password"
+                name="password"
+                type="text"
+                required
+                minLength={6}
+                placeholder="Mínimo 6 caracteres"
               />
             </div>
             <div className="space-y-2">
@@ -135,8 +152,8 @@ export default async function InvitarUsuarioPage({ searchParams }: Props) {
               </select>
             </div>
             <div className="flex gap-3 pt-2">
-              <SubmitButton className="flex-1" pendingText="Enviando invitación...">
-                Enviar invitación
+              <SubmitButton className="flex-1" pendingText="Creando...">
+                Crear usuario
               </SubmitButton>
               <Button variant="outline" asChild>
                 <Link href="/admin/usuarios">Cancelar</Link>

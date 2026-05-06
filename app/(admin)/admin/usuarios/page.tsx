@@ -44,7 +44,7 @@ export default async function UsuariosPage({ searchParams }: Props) {
         <Button asChild>
           <Link href="/admin/usuarios/invitar">
             <UserPlus className="h-4 w-4" />
-            Invitar usuario
+            Crear usuario
           </Link>
         </Button>
       </div>

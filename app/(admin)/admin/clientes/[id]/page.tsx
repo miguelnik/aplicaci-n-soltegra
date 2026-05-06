@@ -116,7 +116,7 @@ export default async function ClienteDetallePage({ params, searchParams }: Props
         <Button asChild>
           <Link href={`/admin/usuarios/invitar?org=${id}`}>
             <UserPlus className="h-4 w-4" />
-            Invitar usuario
+            Crear usuario
           </Link>
         </Button>
       </div>
@@ -204,7 +204,7 @@ export default async function ClienteDetallePage({ params, searchParams }: Props
                     href={`/admin/usuarios/invitar?org=${id}`}
                     className="text-primary hover:underline"
                   >
-                    Invitar primero
+                    Crear usuario
                   </Link>
                 </p>
               )}
