@@ -3,10 +3,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 async function login(formData: FormData) {
   "use server";
@@ -86,9 +86,9 @@ export default async function LoginPage({ searchParams }: Props) {
               autoComplete="current-password"
             />
           </div>
-          <Button type="submit" className="w-full">
+          <SubmitButton className="w-full" pendingText="Entrando...">
             Iniciar sesión
-          </Button>
+          </SubmitButton>
         </form>
       </CardContent>
     </Card>

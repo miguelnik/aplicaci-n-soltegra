@@ -1,19 +1,20 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import Link from "next/link";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 async function createOrg(formData: FormData) {
   "use server";
   await requireAdmin();
-  const supabase = await createSupabaseServerClient();
+  const admin = createSupabaseAdminClient();
 
-  const { data, error } = await supabase
+  const { data, error } = await admin
     .from("organizations")
     .insert({
       name: formData.get("name") as string,
@@ -85,9 +86,9 @@ export default async function NuevoClientePage() {
               />
             </div>
             <div className="flex gap-3 pt-2">
-              <Button type="submit" className="flex-1">
+              <SubmitButton className="flex-1" pendingText="Creando...">
                 Crear cliente
-              </Button>
+              </SubmitButton>
               <Button variant="outline" asChild>
                 <Link href="/admin/clientes">Cancelar</Link>
               </Button>

@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,15 +9,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/client/StatusBadge";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { format } from "date-fns";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Trash2 } from "lucide-react";
 
 async function updateOrg(orgId: string, formData: FormData) {
   "use server";
   await requireAdmin();
-  const supabase = await createSupabaseServerClient();
+  const admin = createSupabaseAdminClient();
 
-  await supabase
+  const { error } = await admin
     .from("organizations")
     .update({
       name: formData.get("name") as string,
@@ -27,18 +29,52 @@ async function updateOrg(orgId: string, formData: FormData) {
     })
     .eq("id", orgId);
 
+  if (error) {
+    redirect(`/admin/clientes/${orgId}?error=${encodeURIComponent("Error al guardar: " + error.message)}`);
+  }
   redirect(`/admin/clientes/${orgId}?saved=1`);
+}
+
+async function deleteOrg(orgId: string) {
+  "use server";
+  await requireAdmin();
+  const admin = createSupabaseAdminClient();
+
+  const { count } = await admin
+    .from("profiles")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", orgId);
+
+  if (count && count > 0) {
+    redirect(`/admin/clientes/${orgId}?error=${encodeURIComponent("No se puede eliminar: tiene usuarios asignados. Elimínalos primero.")}`);
+  }
+
+  const { count: reqCount } = await admin
+    .from("certificate_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("organization_id", orgId);
+
+  if (reqCount && reqCount > 0) {
+    redirect(`/admin/clientes/${orgId}?error=${encodeURIComponent("No se puede eliminar: tiene solicitudes asociadas.")}`);
+  }
+
+  const { error } = await admin.from("organizations").delete().eq("id", orgId);
+
+  if (error) {
+    redirect(`/admin/clientes/${orgId}?error=${encodeURIComponent("Error al eliminar: " + error.message)}`);
+  }
+  redirect("/admin/clientes?deleted=1");
 }
 
 interface Props {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ saved?: string }>;
+  searchParams: Promise<{ saved?: string; error?: string }>;
 }
 
 export default async function ClienteDetallePage({ params, searchParams }: Props) {
   await requireAdmin();
   const { id } = await params;
-  const { saved } = await searchParams;
+  const { saved, error } = await searchParams;
   const supabase = await createSupabaseServerClient();
 
   const { data: org } = await supabase
@@ -62,6 +98,7 @@ export default async function ClienteDetallePage({ params, searchParams }: Props
     .limit(5);
 
   const updateOrgBound = updateOrg.bind(null, id);
+  const deleteOrgBound = deleteOrg.bind(null, id);
 
   return (
     <div className="space-y-6">
@@ -87,6 +124,12 @@ export default async function ClienteDetallePage({ params, searchParams }: Props
       {saved && (
         <div className="rounded-md bg-green-50 px-4 py-3 text-sm text-green-700">
           Datos guardados correctamente.
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
         </div>
       )}
 
@@ -129,9 +172,9 @@ export default async function ClienteDetallePage({ params, searchParams }: Props
                 <Label htmlFor="notes">Notas internas</Label>
                 <Textarea id="notes" name="notes" rows={3} defaultValue={org.notes ?? ""} />
               </div>
-              <Button type="submit" size="sm">
+              <SubmitButton size="sm" pendingText="Guardando...">
                 Guardar cambios
-              </Button>
+              </SubmitButton>
             </form>
           </CardContent>
         </Card>
@@ -191,6 +234,28 @@ export default async function ClienteDetallePage({ params, searchParams }: Props
               </CardContent>
             </Card>
           )}
+
+          {/* Eliminar organización */}
+          <Card className="border-destructive/30">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base text-destructive">Zona peligrosa</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-3 text-sm text-muted-foreground">
+                Eliminar esta organización. Solo posible si no tiene usuarios ni solicitudes.
+              </p>
+              <form action={deleteOrgBound}>
+                <SubmitButton
+                  variant="destructive"
+                  size="sm"
+                  pendingText="Eliminando..."
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Eliminar organización
+                </SubmitButton>
+              </form>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
