@@ -6,7 +6,7 @@ import type { FormSchema, Section, Field, FileBlock, FieldType } from "@/lib/for
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Trash2, Plus, GripVertical, ChevronDown, ChevronUp, Save } from "lucide-react";
 import { saveFormSchema } from "./actions";
@@ -35,7 +35,11 @@ export function FormBuilderClient({ currentSchema, currentVersion }: Props) {
   const toggleSection = (id: string) =>
     setOpenSections((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
 

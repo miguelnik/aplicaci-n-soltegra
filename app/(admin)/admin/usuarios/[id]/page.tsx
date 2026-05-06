@@ -83,7 +83,7 @@ export default async function EditarUsuarioPage({ params, searchParams }: Props)
     redirect(`/admin/usuarios/${id}?pwok=1`);
   }
 
-  async function handleDelete(_formData: FormData) {
+  async function handleDelete() {
     "use server";
     await requireAdmin();
 

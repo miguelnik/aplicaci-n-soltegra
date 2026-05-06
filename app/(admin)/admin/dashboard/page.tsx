@@ -2,10 +2,8 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/client/StatusBadge";
 import { format } from "date-fns";
-import { es } from "date-fns/locale";
 
 export default async function AdminDashboardPage() {
   await requireAdmin();
