@@ -9,7 +9,8 @@ import { FormRenderer } from "@/components/forms/FormRenderer";
 import type { FormSchema } from "@/lib/form-schema/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { ArrowLeft, Download, FileText, CheckCircle2, Clock } from "lucide-react";
+import { ArrowLeft, Download, FileText, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
+import { DeleteDraftButton } from "./DeleteDraftButton";
 
 const STATUS_STEPS = [
   { key: "submitted", label: "Solicitud recibida", shortLabel: "Recibida" },
@@ -250,13 +251,27 @@ export default async function SolicitudDetallePage({ params }: Props) {
         </Card>
       )}
 
+      {/* Fecha límite del cliente */}
+      {req.client_deadline && (
+        <div className="flex items-center gap-2 rounded-md border border-orange-300 bg-orange-50 px-4 py-2 text-sm text-orange-800">
+          <AlertTriangle className="h-4 w-4" />
+          <span>
+            Fecha límite solicitada:{" "}
+            <strong>{format(new Date(req.client_deadline), "d 'de' MMMM 'de' yyyy", { locale: es })}</strong>
+          </span>
+        </div>
+      )}
+
       {isDraft && (
         <Card>
-          <CardContent className="py-6 text-center text-sm text-muted-foreground">
-            Esta solicitud está guardada como borrador.{" "}
-            <Link href="/solicitudes/nueva" className="text-primary hover:underline">
-              Continuar y enviarla
-            </Link>
+          <CardContent className="flex flex-col items-center gap-3 py-6 text-center text-sm text-muted-foreground">
+            <p>
+              Esta solicitud está guardada como borrador.{" "}
+              <Link href="/solicitudes/nueva" className="text-primary hover:underline">
+                Continuar y enviarla
+              </Link>
+            </p>
+            <DeleteDraftButton requestId={req.id} />
           </CardContent>
         </Card>
       )}

@@ -10,7 +10,7 @@ import { FormRenderer } from "@/components/forms/FormRenderer";
 import type { FormSchema } from "@/lib/form-schema/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Download } from "lucide-react";
+import { Download, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Props {
@@ -61,6 +61,20 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
           Creada el {format(new Date(req.created_at), "d 'de' MMMM 'de' yyyy", { locale: es })}
         </p>
       </div>
+
+      {/* Fecha límite del cliente */}
+      {req.client_deadline && (
+        <div className="flex items-center gap-3 rounded-lg border-2 border-red-400 bg-red-50 px-5 py-3 text-red-800">
+          <AlertTriangle className="h-5 w-5 shrink-0" />
+          <div>
+            <p className="text-sm font-bold">
+              Fecha límite del cliente:{" "}
+              {format(new Date(req.client_deadline), "d 'de' MMMM 'de' yyyy", { locale: es })}
+            </p>
+            <p className="text-xs text-red-600">El cliente necesita el certificado antes de esta fecha</p>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Columna izquierda: datos del formulario + archivos */}

@@ -29,14 +29,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {/* Mobile header */}
       <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b bg-background px-4 md:hidden">
         <AdminMobileNav />
-        <Image
-          src="/logo.png"
-          alt="Soltegra"
-          width={100}
-          height={28}
-          className="object-contain"
-          priority
-        />
+        <Link href="/admin/dashboard">
+          <Image
+            src="/logo.png"
+            alt="Soltegra"
+            width={100}
+            height={28}
+            className="object-contain"
+            priority
+          />
+        </Link>
         <form action={signOut}>
           <Button variant="ghost" size="icon" type="submit">
             <LogOut className="h-4 w-4" />
@@ -47,14 +49,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r bg-background md:flex">
         <div className="flex h-14 items-center border-b px-4">
-          <Image
-            src="/logo.png"
-            alt="Soltegra"
-            width={130}
-            height={36}
-            className="object-contain"
-            priority
-          />
+          <Link href="/admin/dashboard">
+            <Image
+              src="/logo.png"
+              alt="Soltegra"
+              width={130}
+              height={36}
+              className="object-contain"
+              priority
+            />
+          </Link>
         </div>
         <nav className="flex flex-1 flex-col gap-1 p-3">
           <Button variant="ghost" size="sm" className="justify-start" asChild>

@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { StatusBadge } from "@/components/client/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, AlertTriangle } from "lucide-react";
 
 const STATUSES = [
   { value: "", label: "Todas" },
@@ -27,7 +27,7 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
 
   let query = supabase
     .from("certificate_requests")
-    .select(`id, reference_code, property_address, status, created_at, estimated_delivery_date, organizations(name)`)
+    .select(`id, reference_code, property_address, status, created_at, estimated_delivery_date, client_deadline, organizations(name)`)
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -70,9 +70,14 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
           </thead>
           <tbody className="divide-y">
             {requests?.map((r) => (
-              <tr key={r.id} className="hover:bg-muted/30">
+              <tr key={r.id} className={`hover:bg-muted/30 ${r.client_deadline && r.status !== "delivered" && r.status !== "cancelled" ? "bg-red-50/50" : ""}`}>
                 <td className="px-4 py-3 font-mono text-xs font-medium">
-                  {r.reference_code ?? <span className="text-muted-foreground">Sin ref.</span>}
+                  <div className="flex items-center gap-1.5">
+                    {r.client_deadline && r.status !== "delivered" && r.status !== "cancelled" && (
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-red-500" title="Tiene fecha límite" />
+                    )}
+                    {r.reference_code ?? <span className="text-muted-foreground">Sin ref.</span>}
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
                   {(r.organizations as unknown as { name: string } | null)?.name ?? "—"}
@@ -84,7 +89,12 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
                   <StatusBadge status={r.status} />
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
-                  {format(new Date(r.created_at), "dd/MM/yy")}
+                  <div>{format(new Date(r.created_at), "dd/MM/yy")}</div>
+                  {r.client_deadline && r.status !== "delivered" && r.status !== "cancelled" && (
+                    <div className="text-[10px] font-semibold text-red-600">
+                      Límite: {format(new Date(r.client_deadline), "dd/MM/yy")}
+                    </div>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <Button variant="ghost" size="sm" asChild>

@@ -24,14 +24,16 @@ export default async function ClientLayout({ children }: { children: React.React
         <div className="container flex h-14 items-center justify-between">
           <div className="flex items-center gap-4">
             <ClientMobileNav />
-            <Image
-              src="/logo.png"
-              alt="Soltegra"
-              width={120}
-              height={32}
-              className="object-contain"
-              priority
-            />
+            <Link href="/dashboard">
+              <Image
+                src="/logo.png"
+                alt="Soltegra"
+                width={120}
+                height={32}
+                className="object-contain"
+                priority
+              />
+            </Link>
             <nav className="hidden items-center gap-1 md:flex">
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/dashboard">
