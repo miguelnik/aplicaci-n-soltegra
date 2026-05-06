@@ -4,158 +4,221 @@ import { es } from "date-fns/locale";
 import { requireClient } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/client/StatusBadge";
-import { PlusCircle, FileText, Download } from "lucide-react";
+import {
+  PlusCircle,
+  FileText,
+  Download,
+  Clock,
+  CheckCircle2,
+  Search,
+  Loader2,
+  Send,
+  Copy,
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
 
-const STATUS_STEPS = [
-  "submitted",
-  "in_review",
-  "in_progress",
-  "delivered",
-] as const;
-
-function ProgressBar({ status }: { status: string }) {
-  const stepIndex = STATUS_STEPS.indexOf(status as never);
-  const progress = stepIndex === -1 ? 0 : ((stepIndex + 1) / STATUS_STEPS.length) * 100;
-
-  return (
-    <div className="space-y-2">
-      <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-        <div
-          className="h-full rounded-full bg-primary transition-all"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
-      <div className="flex justify-between text-xs text-muted-foreground">
-        <span>Enviada</span>
-        <span>En revisión</span>
-        <span>En redacción</span>
-        <span>Entregado</span>
-      </div>
-    </div>
-  );
+interface Props {
+  searchParams: Promise<{ status?: string; q?: string }>;
 }
 
-export default async function ClientDashboardPage() {
+export default async function ClientDashboardPage({ searchParams }: Props) {
   const profile = await requireClient();
+  const { status: filterStatus, q: searchQuery } = await searchParams;
   const supabase = await createSupabaseServerClient();
+  const orgId = profile.organization_id!;
 
-  // Última solicitud no cancelada y no borrador
-  const { data: lastRequest } = await supabase
-    .from("certificate_requests")
-    .select("id, status, property_address, reference_code, estimated_delivery_date, delivered_at, certificate_pdf_path")
-    .eq("organization_id", profile.organization_id!)
-    .not("status", "in", '("draft","cancelled")')
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single();
-
-  // Todas las solicitudes para el listado
   const { data: allRequests } = await supabase
     .from("certificate_requests")
     .select("id, status, property_address, reference_code, estimated_delivery_date, created_at, certificate_pdf_path")
-    .eq("organization_id", profile.organization_id!)
-    .order("created_at", { ascending: false })
-    .limit(10);
+    .eq("organization_id", orgId)
+    .not("status", "eq", "cancelled")
+    .order("created_at", { ascending: false });
+
+  const requests = allRequests ?? [];
+
+  const counts = {
+    total: requests.length,
+    active: requests.filter((r) => !["draft", "delivered", "cancelled"].includes(r.status)).length,
+    delivered: requests.filter((r) => r.status === "delivered").length,
+    draft: requests.filter((r) => r.status === "draft").length,
+  };
+
+  let filtered = requests;
+  if (filterStatus) {
+    if (filterStatus === "active") {
+      filtered = filtered.filter((r) => !["draft", "delivered", "cancelled"].includes(r.status));
+    } else {
+      filtered = filtered.filter((r) => r.status === filterStatus);
+    }
+  }
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase();
+    filtered = filtered.filter(
+      (r) =>
+        r.property_address?.toLowerCase().includes(q) ||
+        r.reference_code?.toLowerCase().includes(q),
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Cabecera */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Bienvenido{profile.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}</h1>
-          <p className="text-muted-foreground">Gestiona tus certificados energéticos</p>
+          <h1 className="text-2xl font-bold">
+            Hola{profile.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}
+          </h1>
+          <p className="text-muted-foreground">Panel de certificados energéticos</p>
         </div>
-        <Button asChild>
-          <Link href="/solicitudes/nueva">
-            <PlusCircle className="h-4 w-4" />
-            Nueva solicitud
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild>
+            <Link href="/solicitudes/nueva">
+              <PlusCircle className="h-4 w-4" />
+              Nueva solicitud
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/solicitudes/lote">
+              <Copy className="h-4 w-4" />
+              <span className="hidden sm:inline">Solicitud en lote</span>
+              <span className="sm:hidden">Lote</span>
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      {/* Tarjeta del certificado más reciente */}
-      {lastRequest ? (
-        <Card>
-          <CardHeader>
-            <div className="flex items-start justify-between">
-              <div>
-                <CardTitle className="text-base">Certificado en curso</CardTitle>
-                <CardDescription>{lastRequest.property_address ?? "Sin dirección"}</CardDescription>
+      {/* Contadores */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Link href="/dashboard">
+          <Card className={`cursor-pointer transition-shadow hover:shadow-md ${!filterStatus ? "ring-2 ring-primary" : ""}`}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <FileText className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{counts.total}</p>
+                  <p className="text-xs text-muted-foreground">Total</p>
+                </div>
               </div>
-              <StatusBadge status={lastRequest.status} />
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {lastRequest.status !== "delivered" && lastRequest.status !== "cancelled" && (
-              <ProgressBar status={lastRequest.status} />
-            )}
-            {lastRequest.estimated_delivery_date && lastRequest.status !== "delivered" && (
-              <p className="text-sm text-muted-foreground">
-                Entrega prevista:{" "}
-                <span className="font-medium text-foreground">
-                  {format(new Date(lastRequest.estimated_delivery_date), "d 'de' MMMM 'de' yyyy", { locale: es })}
-                </span>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/dashboard?status=active">
+          <Card className={`cursor-pointer transition-shadow hover:shadow-md ${filterStatus === "active" ? "ring-2 ring-orange-500" : ""}`}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-orange-100">
+                  <Loader2 className="h-5 w-5 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{counts.active}</p>
+                  <p className="text-xs text-muted-foreground">En curso</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/dashboard?status=delivered">
+          <Card className={`cursor-pointer transition-shadow hover:shadow-md ${filterStatus === "delivered" ? "ring-2 ring-green-500" : ""}`}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-green-100">
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{counts.delivered}</p>
+                  <p className="text-xs text-muted-foreground">Entregados</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/dashboard?status=draft">
+          <Card className={`cursor-pointer transition-shadow hover:shadow-md ${filterStatus === "draft" ? "ring-2 ring-gray-400" : ""}`}>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100">
+                  <Send className="h-5 w-5 text-gray-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{counts.draft}</p>
+                  <p className="text-xs text-muted-foreground">Borradores</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+
+      {/* Buscador */}
+      <form className="relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          name="q"
+          placeholder="Buscar por dirección o referencia..."
+          defaultValue={searchQuery ?? ""}
+          className="pl-9"
+        />
+        {filterStatus && <input type="hidden" name="status" value={filterStatus} />}
+      </form>
+
+      {/* Lista de solicitudes */}
+      {filtered.length > 0 ? (
+        <div className="space-y-2">
+          {filtered.map((req) => (
+            <Link key={req.id} href={`/solicitudes/${req.id}`}>
+              <Card className="cursor-pointer transition-shadow hover:shadow-md">
+                <CardContent className="flex items-center justify-between gap-4 py-4">
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="truncate font-medium">{req.property_address ?? "Sin dirección"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {req.reference_code ?? "Borrador"} · {format(new Date(req.created_at), "dd/MM/yyyy")}
+                    </p>
+                    {req.estimated_delivery_date && req.status !== "delivered" && req.status !== "draft" && (
+                      <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        Entrega: {format(new Date(req.estimated_delivery_date), "d MMM yyyy", { locale: es })}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
+                    {req.status === "delivered" && req.certificate_pdf_path && (
+                      <Download className="h-4 w-4 text-green-600" />
+                    )}
+                    <StatusBadge status={req.status} />
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
+            <FileText className="h-12 w-12 text-muted-foreground/40" />
+            <div>
+              <p className="font-medium">
+                {searchQuery ? "Sin resultados" : "Sin certificados todavía"}
               </p>
-            )}
-            {lastRequest.status === "delivered" && lastRequest.certificate_pdf_path && (
-              <Button size="sm" asChild>
-                <Link href={`/solicitudes/${lastRequest.id}/descargar`}>
-                  <Download className="h-4 w-4" />
-                  Descargar certificado
+              <p className="text-sm text-muted-foreground">
+                {searchQuery
+                  ? `No hay solicitudes que coincidan con "${searchQuery}"`
+                  : "Crea tu primera solicitud para empezar"}
+              </p>
+            </div>
+            {!searchQuery && (
+              <Button asChild>
+                <Link href="/solicitudes/nueva">
+                  <PlusCircle className="h-4 w-4" />
+                  Nueva solicitud
                 </Link>
               </Button>
             )}
           </CardContent>
         </Card>
-      ) : (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-4 py-12 text-center">
-            <FileText className="h-12 w-12 text-muted-foreground/50" />
-            <div>
-              <p className="font-medium">Sin certificados activos</p>
-              <p className="text-sm text-muted-foreground">
-                Crea tu primera solicitud para empezar
-              </p>
-            </div>
-            <Button asChild>
-              <Link href="/solicitudes/nueva">
-                <PlusCircle className="h-4 w-4" />
-                Nueva solicitud
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Historial */}
-      {allRequests && allRequests.length > 0 && (
-        <div>
-          <h2 className="mb-3 text-lg font-semibold">Historial</h2>
-          <div className="space-y-2">
-            {allRequests.map((req) => (
-              <Link key={req.id} href={`/solicitudes/${req.id}`}>
-                <Card className="cursor-pointer transition-shadow hover:shadow-md">
-                  <CardContent className="flex items-center justify-between py-4">
-                    <div>
-                      <p className="font-medium">{req.property_address ?? "Sin dirección"}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {req.reference_code} ·{" "}
-                        {format(new Date(req.created_at), "dd/MM/yyyy")}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {req.status === "delivered" && req.certificate_pdf_path && (
-                        <Download className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <StatusBadge status={req.status} />
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        </div>
       )}
     </div>
   );

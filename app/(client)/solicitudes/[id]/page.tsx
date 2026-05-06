@@ -12,13 +12,21 @@ import { es } from "date-fns/locale";
 import { ArrowLeft, Download, FileText, CheckCircle2, Clock } from "lucide-react";
 
 const STATUS_STEPS = [
-  { key: "submitted", label: "Solicitud recibida" },
-  { key: "in_review", label: "En revisión" },
-  { key: "in_progress", label: "En redacción" },
-  { key: "delivered", label: "Entregado" },
+  { key: "submitted", label: "Solicitud recibida", shortLabel: "Recibida" },
+  { key: "in_review", label: "En revisión", shortLabel: "Revisión" },
+  { key: "in_progress", label: "En redacción", shortLabel: "Redacción" },
+  { key: "delivered", label: "Entregado", shortLabel: "Entregado" },
 ] as const;
 
-function StatusTimeline({ status }: { status: string }) {
+type HistoryEntry = { status: string; at: string };
+
+function StatusTimeline({
+  status,
+  history,
+}: {
+  status: string;
+  history: HistoryEntry[];
+}) {
   if (status === "cancelled") {
     return (
       <div className="flex items-center gap-2 rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -33,17 +41,26 @@ function StatusTimeline({ status }: { status: string }) {
   const currentIdx = STATUS_STEPS.findIndex((s) => s.key === status);
   const activeIdx = status === "awaiting_info" ? 2 : currentIdx;
 
+  const historyMap = new Map<string, string>();
+  for (const entry of history) {
+    if (!historyMap.has(entry.status)) {
+      historyMap.set(entry.status, entry.at);
+    }
+  }
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {specialLabel && (
-        <div className="rounded-md bg-yellow-50 px-4 py-2 text-sm text-yellow-800 border border-yellow-200">
+        <div className="rounded-md border border-yellow-200 bg-yellow-50 px-4 py-2 text-sm text-yellow-800">
           {specialLabel} — contacta con Soltegra para más información.
         </div>
       )}
-      <div className="flex items-center gap-0">
+      <div className="flex items-start gap-0">
         {STATUS_STEPS.map((step, i) => {
           const done = i < activeIdx;
           const active = i === activeIdx;
+          const dateStr = historyMap.get(step.key);
+
           return (
             <div key={step.key} className="flex flex-1 items-center">
               <div className="flex flex-col items-center">
@@ -59,16 +76,22 @@ function StatusTimeline({ status }: { status: string }) {
                   {done ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
                 </div>
                 <span
-                  className={`mt-1 hidden text-center text-xs sm:block ${
-                    done || active ? "text-foreground font-medium" : "text-muted-foreground/50"
+                  className={`mt-1 text-center text-xs leading-tight ${
+                    done || active ? "font-medium text-foreground" : "text-muted-foreground/50"
                   }`}
                 >
-                  {step.label}
+                  <span className="hidden sm:inline">{step.label}</span>
+                  <span className="sm:hidden">{step.shortLabel}</span>
                 </span>
+                {dateStr && (done || active) && (
+                  <span className="mt-0.5 text-center text-[10px] text-muted-foreground">
+                    {format(new Date(dateStr), "d MMM", { locale: es })}
+                  </span>
+                )}
               </div>
               {i < STATUS_STEPS.length - 1 && (
                 <div
-                  className={`mx-1 h-0.5 flex-1 ${done ? "bg-primary" : "bg-muted-foreground/20"}`}
+                  className={`mx-1 mt-4 h-0.5 flex-1 ${done ? "bg-primary" : "bg-muted-foreground/20"}`}
                 />
               )}
             </div>
@@ -103,7 +126,6 @@ export default async function SolicitudDetallePage({ params }: Props) {
     .eq("request_id", id)
     .order("uploaded_at");
 
-  // Generar signed URLs para los archivos subidos
   const filesWithUrls = await Promise.all(
     (files ?? []).map(async (f) => {
       const { data } = await supabase.storage
@@ -116,33 +138,34 @@ export default async function SolicitudDetallePage({ params }: Props) {
   const schema = (req.form_schemas as unknown as { schema: FormSchema } | null)?.schema;
   const isDelivered = req.status === "delivered";
   const isDraft = req.status === "draft";
+  const statusHistory = (req.status_history ?? []) as HistoryEntry[];
 
   return (
     <div className="space-y-6">
       {/* Cabecera */}
       <div>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-          <Link href="/solicitudes" className="hover:text-primary flex items-center gap-1">
+        <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/solicitudes" className="flex items-center gap-1 hover:text-primary">
             <ArrowLeft className="h-3.5 w-3.5" />
             Mis certificados
           </Link>
           <span>/</span>
           <span className="font-mono">{req.reference_code ?? id.slice(0, 8)}</span>
         </div>
-        <div className="flex items-start justify-between gap-4">
-          <h1 className="text-2xl font-bold">{req.property_address ?? "Sin dirección"}</h1>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <h1 className="text-xl font-bold sm:text-2xl">{req.property_address ?? "Sin dirección"}</h1>
           <StatusBadge status={req.status} />
         </div>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="mt-1 text-sm text-muted-foreground">
           Solicitud creada el {format(new Date(req.created_at), "d 'de' MMMM 'de' yyyy", { locale: es })}
         </p>
       </div>
 
-      {/* Progreso */}
+      {/* Timeline */}
       {!isDraft && (
         <Card>
-          <CardContent className="pt-6 pb-4">
-            <StatusTimeline status={req.status} />
+          <CardContent className="pb-4 pt-6">
+            <StatusTimeline status={req.status} history={statusHistory} />
           </CardContent>
         </Card>
       )}
@@ -203,11 +226,11 @@ export default async function SolicitudDetallePage({ params }: Props) {
                   key={f.id}
                   className="flex items-center justify-between rounded-md border bg-muted/20 px-3 py-2 text-sm"
                 >
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex min-w-0 items-center gap-2">
                     <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <span className="truncate">{f.original_filename}</span>
                     {f.size_bytes && (
-                      <span className="text-xs text-muted-foreground shrink-0">
+                      <span className="shrink-0 text-xs text-muted-foreground">
                         {(f.size_bytes / 1024).toFixed(0)} KB
                       </span>
                     )}
@@ -215,7 +238,7 @@ export default async function SolicitudDetallePage({ params }: Props) {
                   {f.signedUrl && (
                     <Button variant="ghost" size="sm" asChild className="ml-2 shrink-0">
                       <a href={f.signedUrl} target="_blank" rel="noopener noreferrer">
-                        <Download className="h-3.5 w-3.5 mr-1" />
+                        <Download className="mr-1 h-3.5 w-3.5" />
                         Ver
                       </a>
                     </Button>
@@ -231,7 +254,7 @@ export default async function SolicitudDetallePage({ params }: Props) {
         <Card>
           <CardContent className="py-6 text-center text-sm text-muted-foreground">
             Esta solicitud está guardada como borrador.{" "}
-            <Link href={`/solicitudes/nueva`} className="text-primary hover:underline">
+            <Link href="/solicitudes/nueva" className="text-primary hover:underline">
               Continuar y enviarla
             </Link>
           </CardContent>
