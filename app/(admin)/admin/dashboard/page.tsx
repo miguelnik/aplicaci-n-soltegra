@@ -60,8 +60,8 @@ export default async function AdminDashboardPage() {
       <div>
         <h2 className="mb-3 text-lg font-semibold">Solicitudes recientes</h2>
         {recent && recent.length > 0 ? (
-          <div className="overflow-hidden rounded-lg border">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full min-w-[600px] text-sm">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium">Referencia</th>

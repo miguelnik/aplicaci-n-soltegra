@@ -12,7 +12,7 @@ import {
   Users,
   Building2,
 } from "lucide-react";
-
+import { AdminMobileNav } from "@/components/admin/MobileNav";
 
 async function signOut() {
   "use server";
@@ -25,8 +25,26 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   await requireAdmin();
 
   return (
-    <div className="flex min-h-screen">
-      {/* Sidebar */}
+    <div className="flex min-h-screen flex-col md:flex-row">
+      {/* Mobile header */}
+      <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b bg-background px-4 md:hidden">
+        <AdminMobileNav />
+        <Image
+          src="/logo.png"
+          alt="Soltegra"
+          width={100}
+          height={28}
+          className="object-contain"
+          priority
+        />
+        <form action={signOut}>
+          <Button variant="ghost" size="icon" type="submit">
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </form>
+      </header>
+
+      {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r bg-background md:flex">
         <div className="flex h-14 items-center border-b px-4">
           <Image
@@ -82,7 +100,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
       {/* Main content */}
       <div className="flex flex-1 flex-col">
-        <main className="flex-1 p-6 md:p-8">{children}</main>
+        <main className="flex-1 p-4 md:p-8">{children}</main>
       </div>
     </div>
   );

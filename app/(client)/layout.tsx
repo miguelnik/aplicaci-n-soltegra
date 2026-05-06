@@ -5,6 +5,7 @@ import { requireClient } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { FileText, LayoutDashboard, LogOut, PlusCircle, User } from "lucide-react";
+import { ClientMobileNav } from "@/components/client/MobileNav";
 
 async function signOut() {
   "use server";
@@ -21,7 +22,8 @@ export default async function ClientLayout({ children }: { children: React.React
       {/* Top navbar */}
       <header className="sticky top-0 z-50 border-b bg-background">
         <div className="container flex h-14 items-center justify-between">
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4">
+            <ClientMobileNav />
             <Image
               src="/logo.png"
               alt="Soltegra"
@@ -52,10 +54,10 @@ export default async function ClientLayout({ children }: { children: React.React
             </nav>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild>
+            <Button variant="ghost" size="sm" className="hidden md:inline-flex" asChild>
               <Link href="/perfil">
                 <User className="h-4 w-4" />
-                <span className="hidden md:inline">{profile.full_name ?? "Mi cuenta"}</span>
+                {profile.full_name ?? "Mi cuenta"}
               </Link>
             </Button>
             <form action={signOut}>
@@ -68,7 +70,7 @@ export default async function ClientLayout({ children }: { children: React.React
         </div>
       </header>
 
-      <main className="container flex-1 py-8">{children}</main>
+      <main className="container flex-1 px-4 py-6 md:px-6 md:py-8">{children}</main>
     </div>
   );
 }
