@@ -177,18 +177,18 @@ export default async function ClientDashboardPage({ searchParams }: Props) {
                     <p className="text-xs text-muted-foreground">
                       {req.reference_code ?? "Borrador"} · {format(new Date(req.created_at), "dd/MM/yyyy")}
                     </p>
-                    {req.estimated_delivery_date && req.status !== "delivered" && req.status !== "draft" && (
-                      <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        Entrega: {format(new Date(req.estimated_delivery_date), "d MMM yyyy", { locale: es })}
-                      </p>
-                    )}
                   </div>
-                  <div className="flex shrink-0 items-center gap-3">
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <StatusBadge status={req.status} />
+                    {req.estimated_delivery_date && req.status !== "delivered" && req.status !== "draft" && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">
+                        <Clock className="h-3 w-3" />
+                        {format(new Date(req.estimated_delivery_date), "d MMM yyyy", { locale: es })}
+                      </span>
+                    )}
                     {req.status === "delivered" && req.certificate_pdf_path && (
                       <Download className="h-4 w-4 text-green-600" />
                     )}
-                    <StatusBadge status={req.status} />
                   </div>
                 </CardContent>
               </Card>

@@ -1,7 +1,6 @@
 "use server";
 
 import { requireAdmin } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendEstadoActualizado, sendCertificadoListo } from "@/lib/email/send";
 import { format } from "date-fns";
@@ -14,9 +13,9 @@ export async function updateStatus(
   notes: string,
 ) {
   await requireAdmin();
-  const supabase = await createSupabaseServerClient();
+  const admin = createSupabaseAdminClient();
 
-  const { data: req, error } = await supabase
+  const { data: req, error } = await admin
     .rpc("admin_update_request_status", {
       p_request_id: requestId,
       p_new_status: newStatus,
@@ -27,24 +26,18 @@ export async function updateStatus(
 
   if (error) throw new Error(error.message);
 
-  // Obtener email del creador para notificar
-  const adminClient = createSupabaseAdminClient();
-  const { data: creator } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("id", (req as { created_by: string }).created_by)
-    .single();
+  const reqData = req as {
+    created_by: string;
+    reference_code: string;
+    property_address: string;
+    estimated_delivery_date: string | null;
+  };
 
-  if (creator) {
-    const { data: authUser } = await adminClient.auth.admin.getUserById(creator.id);
-    const email = authUser.user?.email;
-    if (email) {
-      const reqData = req as {
-        reference_code: string;
-        property_address: string;
-        estimated_delivery_date: string | null;
-      };
+  const { data: authUser } = await admin.auth.admin.getUserById(reqData.created_by);
+  const email = authUser?.user?.email;
 
+  if (email) {
+    try {
       if (newStatus === "delivered") {
         await sendCertificadoListo({
           toEmail: email,
@@ -64,6 +57,8 @@ export async function updateStatus(
           requestId,
         });
       }
+    } catch {
+      // Email failure should not block status update
     }
   }
 }
