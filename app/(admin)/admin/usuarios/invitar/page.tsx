@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { SubmitButton } from "@/components/ui/submit-button";
 
 async function inviteUser(formData: FormData) {
   "use server";
@@ -19,12 +20,11 @@ async function inviteUser(formData: FormData) {
 
   const adminClient = createSupabaseAdminClient();
 
-  // 1. Invitar al usuario — Supabase envía el email con magic link para set-password
   const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
     email,
     {
       redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback?next=/set-password`,
-      data: { full_name: fullName, organization_id: orgId, role },
+      data: { full_name: fullName, organization_id: orgId || null, role },
     },
   );
 
@@ -32,14 +32,16 @@ async function inviteUser(formData: FormData) {
     redirect("/admin/usuarios/invitar?error=" + encodeURIComponent(inviteError?.message ?? "Error desconocido"));
   }
 
-  // 2. Crear el perfil (la invitación no lo crea automáticamente)
-  const supabase = await createSupabaseServerClient();
-  await supabase.from("profiles").upsert({
+  const { error: profileError } = await adminClient.from("profiles").upsert({
     id: inviteData.user.id,
-    organization_id: orgId || null,
+    organization_id: role === "admin" ? null : orgId || null,
     role: role as "admin" | "client",
     full_name: fullName || null,
   });
+
+  if (profileError) {
+    redirect("/admin/usuarios/invitar?error=" + encodeURIComponent("Usuario creado pero error al guardar perfil: " + profileError.message));
+  }
 
   redirect("/admin/usuarios?invited=1");
 }
@@ -77,11 +79,11 @@ export default async function InvitarUsuarioPage({ searchParams }: Props) {
         <CardHeader>
           <CardTitle className="text-base">Datos del usuario</CardTitle>
           <CardDescription>
-            Asigna el usuario a una organización existente. Si todavía no existe,{" "}
+            Para clientes, asigna una organización existente. Si todavía no existe,{" "}
             <Link href="/admin/clientes/nuevo" className="text-primary hover:underline">
               créala primero
             </Link>
-            .
+            . Los admins no necesitan organización.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -103,27 +105,6 @@ export default async function InvitarUsuarioPage({ searchParams }: Props) {
               <Input id="full_name" name="full_name" placeholder="María García López" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="organization_id">
-                Organización <span className="text-destructive">*</span>
-              </Label>
-              <select
-                id="organization_id"
-                name="organization_id"
-                required
-                defaultValue={preselectedOrg ?? ""}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="" disabled>
-                  Selecciona una organización...
-                </option>
-                {orgs?.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="role">Rol</Label>
               <select
                 id="role"
@@ -135,10 +116,28 @@ export default async function InvitarUsuarioPage({ searchParams }: Props) {
                 <option value="admin">Admin Soltegra</option>
               </select>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="organization_id">
+                Organización <span className="text-xs text-muted-foreground">(solo para clientes)</span>
+              </Label>
+              <select
+                id="organization_id"
+                name="organization_id"
+                defaultValue={preselectedOrg ?? ""}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">Sin organización (admin)</option>
+                {orgs?.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="flex gap-3 pt-2">
-              <Button type="submit" className="flex-1">
+              <SubmitButton className="flex-1" pendingText="Enviando invitación...">
                 Enviar invitación
-              </Button>
+              </SubmitButton>
               <Button variant="outline" asChild>
                 <Link href="/admin/usuarios">Cancelar</Link>
               </Button>
