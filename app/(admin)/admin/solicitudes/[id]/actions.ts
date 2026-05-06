@@ -1,6 +1,7 @@
 "use server";
 
 import { requireAdmin } from "@/lib/auth";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendEstadoActualizado, sendCertificadoListo } from "@/lib/email/send";
 import { format } from "date-fns";
@@ -13,9 +14,10 @@ export async function updateStatus(
   notes: string,
 ) {
   await requireAdmin();
-  const admin = createSupabaseAdminClient();
+  const supabase = await createSupabaseServerClient();
 
-  const { data: req, error } = await admin
+  // deliveryDate viene como "YYYY-MM-DD" del input date, o "" si vacío
+  const { data: req, error } = await supabase
     .rpc("admin_update_request_status", {
       p_request_id: requestId,
       p_new_status: newStatus,
@@ -24,20 +26,24 @@ export async function updateStatus(
     })
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error("RPC admin_update_request_status error:", error);
+    throw new Error(error.message);
+  }
+  if (!req) throw new Error("No se pudo actualizar la solicitud");
 
   const reqData = req as {
     created_by: string;
     reference_code: string;
     property_address: string;
-    estimated_delivery_date: string | null;
   };
 
-  const { data: authUser } = await admin.auth.admin.getUserById(reqData.created_by);
-  const email = authUser?.user?.email;
+  try {
+    const adminClient = createSupabaseAdminClient();
+    const { data: authUser } = await adminClient.auth.admin.getUserById(reqData.created_by);
+    const email = authUser?.user?.email;
 
-  if (email) {
-    try {
+    if (email) {
       if (newStatus === "delivered") {
         await sendCertificadoListo({
           toEmail: email,
@@ -57,8 +63,8 @@ export async function updateStatus(
           requestId,
         });
       }
-    } catch {
-      // Email failure should not block status update
     }
+  } catch {
+    // Email failure should not block status update
   }
 }

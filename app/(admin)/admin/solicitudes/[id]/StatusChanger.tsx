@@ -35,8 +35,9 @@ export function StatusChanger({ requestId, currentStatus }: Props) {
       await updateStatus(requestId, status, deliveryDate, notes);
       toast.success(status === "delivered" ? "Estado actualizado. Cliente notificado." : "Estado actualizado");
       router.refresh();
-    } catch {
-      toast.error("Error al cambiar el estado");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Error desconocido";
+      toast.error(`Error al cambiar el estado: ${msg}`);
     } finally {
       setSaving(false);
     }
