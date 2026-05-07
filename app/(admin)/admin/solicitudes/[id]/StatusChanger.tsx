@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { updateStatus } from "./actions";
 
 const STATUSES = [
   { value: "submitted", label: "Nueva" },
@@ -32,16 +31,28 @@ export function StatusChanger({ requestId, currentStatus }: Props) {
   async function handleSave() {
     setSaving(true);
     try {
-      const result = await updateStatus(requestId, status, deliveryDate, notes);
+      const res = await fetch("/api/admin/update-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId, newStatus: status, deliveryDate, notes }),
+      });
+
+      const result = await res.json();
+
       if (!result.ok) {
         toast.error(`Error: ${result.error}`);
         return;
       }
-      toast.success(status === "delivered" ? "Estado actualizado. Cliente notificado." : "Estado actualizado");
+
+      toast.success(
+        status === "delivered"
+          ? "Estado actualizado. Cliente notificado."
+          : "Estado actualizado",
+      );
       router.refresh();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error desconocido";
-      toast.error(`Error inesperado: ${msg}`);
+      toast.error(`Error de red: ${msg}`);
     } finally {
       setSaving(false);
     }
