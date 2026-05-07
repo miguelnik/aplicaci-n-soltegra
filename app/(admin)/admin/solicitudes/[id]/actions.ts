@@ -12,8 +12,13 @@ export async function updateStatus(
   newStatus: string,
   deliveryDate: string,
   notes: string,
-) {
-  await requireAdmin();
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await requireAdmin();
+  } catch {
+    return { ok: false, error: "No autorizado" };
+  }
+
   const supabase = await createSupabaseServerClient();
 
   // deliveryDate viene como "YYYY-MM-DD" del input date, o "" si vacío
@@ -28,9 +33,11 @@ export async function updateStatus(
 
   if (error) {
     console.error("RPC admin_update_request_status error:", error);
-    throw new Error(error.message);
+    return { ok: false, error: `RPC: ${error.message} (code: ${error.code})` };
   }
-  if (!req) throw new Error("No se pudo actualizar la solicitud");
+  if (!req) {
+    return { ok: false, error: "No se devolvieron datos de la solicitud" };
+  }
 
   const reqData = req as {
     created_by: string;
@@ -38,6 +45,7 @@ export async function updateStatus(
     property_address: string;
   };
 
+  // Enviar email de notificación (no bloquea el resultado)
   try {
     const adminClient = createSupabaseAdminClient();
     const { data: authUser } = await adminClient.auth.admin.getUserById(reqData.created_by);
@@ -67,4 +75,6 @@ export async function updateStatus(
   } catch {
     // Email failure should not block status update
   }
+
+  return { ok: true };
 }
