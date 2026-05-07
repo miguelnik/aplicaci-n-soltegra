@@ -1,6 +1,6 @@
 import "server-only";
 import { render } from "@react-email/components";
-import { resend, FROM_EMAIL, APP_URL, ADMIN_EMAILS } from "./client";
+import { getResend, FROM_EMAIL, APP_URL, ADMIN_EMAILS } from "./client";
 import { NuevaSolicitudAdminEmail } from "./templates/nueva-solicitud-admin";
 import { EstadoActualizadoEmail } from "./templates/estado-actualizado";
 import { CertificadoListoEmail } from "./templates/certificado-listo";
@@ -23,7 +23,7 @@ export async function sendNuevaSolicitudAdmin(params: {
   const requestUrl = `${APP_URL}/admin/solicitudes/${params.requestId}`;
   const html = await render(NuevaSolicitudAdminEmail({ ...params, requestUrl }));
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM_EMAIL,
     to: ADMIN_EMAILS,
     subject: `Nueva solicitud — ${params.referenceCode}`,
@@ -44,7 +44,7 @@ export async function sendEstadoActualizado(params: {
   const dashboardUrl = `${APP_URL}/solicitudes/${params.requestId}`;
   const html = await render(EstadoActualizadoEmail({ ...params, dashboardUrl }));
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM_EMAIL,
     to: params.toEmail,
     subject: `Actualización de tu certificado — ${params.referenceCode}`,
@@ -63,7 +63,7 @@ export async function sendCertificadoListo(params: {
   const downloadUrl = `${APP_URL}/solicitudes/${params.requestId}/descargar`;
   const html = await render(CertificadoListoEmail({ ...params, downloadUrl }));
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from: FROM_EMAIL,
     to: params.toEmail,
     subject: `Tu certificado energético está listo — ${params.referenceCode}`,
