@@ -1,0 +1,251 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatusBadge } from "@/components/client/StatusBadge";
+import { CheckCircle2, CircleDashed, CreditCard, Loader2 } from "lucide-react";
+import { format } from "date-fns";
+
+interface Request {
+  id: string;
+  reference_code: string | null;
+  property_address: string | null;
+  status: string;
+  is_paid: boolean;
+  paid_at: string | null;
+  delivered_at: string | null;
+  created_at: string;
+}
+
+interface Props {
+  requests: Request[];
+  orgName: string;
+}
+
+export function BillingTable({ requests, orgName }: Props) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const router = useRouter();
+
+  // Solo mostramos solicitudes que no son borradores ni canceladas
+  const billable = requests.filter(
+    (r) => r.status !== "draft" && r.status !== "cancelled",
+  );
+
+  const unpaid = billable.filter((r) => !r.is_paid);
+  const paid = billable.filter((r) => r.is_paid);
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function selectAllUnpaid() {
+    setSelected(new Set(unpaid.map((r) => r.id)));
+  }
+
+  function clearSelection() {
+    setSelected(new Set());
+  }
+
+  async function markAs(isPaid: boolean) {
+    if (selected.size === 0) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/update-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestIds: Array.from(selected), isPaid }),
+      });
+      const result = await res.json();
+      if (!result.ok) {
+        toast.error(`Error: ${result.error}`);
+        return;
+      }
+      toast.success(
+        isPaid
+          ? `${result.count} certificado${result.count > 1 ? "s" : ""} marcado${result.count > 1 ? "s" : ""} como cobrado${result.count > 1 ? "s" : ""}`
+          : `${result.count} certificado${result.count > 1 ? "s" : ""} marcado${result.count > 1 ? "s" : ""} como pendiente${result.count > 1 ? "s" : ""}`,
+      );
+      setSelected(new Set());
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error de red");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (billable.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CreditCard className="h-4 w-4" />
+            Facturación
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Sin certificados facturables todavía.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <CreditCard className="h-4 w-4" />
+            Facturación — {orgName}
+          </CardTitle>
+          <div className="flex items-center gap-3 text-sm">
+            <span className="flex items-center gap-1 text-green-700">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              {paid.length} cobrado{paid.length !== 1 ? "s" : ""}
+            </span>
+            <span className="flex items-center gap-1 text-orange-600">
+              <CircleDashed className="h-3.5 w-3.5" />
+              {unpaid.length} pendiente{unpaid.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {/* Acciones en lote */}
+        {selected.size > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
+            <span className="text-sm font-medium">
+              {selected.size} seleccionado{selected.size > 1 ? "s" : ""}
+            </span>
+            <div className="ml-auto flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => markAs(true)}
+                disabled={saving}
+              >
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                Marcar cobrado
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => markAs(false)}
+                disabled={saving}
+              >
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CircleDashed className="h-3.5 w-3.5" />}
+                Marcar pendiente
+              </Button>
+              <Button size="sm" variant="ghost" onClick={clearSelection}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Botón seleccionar todos los pendientes */}
+        {unpaid.length > 0 && selected.size === 0 && (
+          <Button size="sm" variant="outline" onClick={selectAllUnpaid}>
+            Seleccionar todos los pendientes ({unpaid.length})
+          </Button>
+        )}
+
+        {/* Tabla */}
+        <div className="overflow-x-auto rounded-lg border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="w-10 px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={selected.size === billable.length && billable.length > 0}
+                    onChange={() => {
+                      if (selected.size === billable.length) {
+                        clearSelection();
+                      } else {
+                        setSelected(new Set(billable.map((r) => r.id)));
+                      }
+                    }}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                </th>
+                <th className="px-3 py-2 text-left font-medium">Referencia</th>
+                <th className="hidden px-3 py-2 text-left font-medium sm:table-cell">Dirección</th>
+                <th className="px-3 py-2 text-left font-medium">Estado</th>
+                <th className="px-3 py-2 text-left font-medium">Pago</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {billable.map((r) => (
+                <tr
+                  key={r.id}
+                  className={`cursor-pointer transition-colors hover:bg-muted/30 ${
+                    selected.has(r.id) ? "bg-primary/5" : ""
+                  }`}
+                  onClick={() => toggleSelect(r.id)}
+                >
+                  <td className="px-3 py-2">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(r.id)}
+                      onChange={() => toggleSelect(r.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                  </td>
+                  <td className="px-3 py-2 font-mono text-xs font-medium">
+                    {r.reference_code ?? "—"}
+                  </td>
+                  <td className="hidden max-w-[200px] truncate px-3 py-2 text-muted-foreground sm:table-cell">
+                    {r.property_address ?? "—"}
+                  </td>
+                  <td className="px-3 py-2">
+                    <StatusBadge status={r.status as "submitted"} />
+                  </td>
+                  <td className="px-3 py-2">
+                    {r.is_paid ? (
+                      <Badge variant="success" className="gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Cobrado
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="gap-1 text-orange-600 border-orange-300">
+                        <CircleDashed className="h-3 w-3" />
+                        Pendiente
+                      </Badge>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Resumen */}
+        <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-2 text-sm">
+          <span className="text-muted-foreground">
+            Total facturables: <span className="font-semibold text-foreground">{billable.length}</span>
+          </span>
+          <span className="text-muted-foreground">
+            Cobrados: <span className="font-semibold text-green-700">{paid.length}</span> / {billable.length}
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

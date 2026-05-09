@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/client/StatusBadge";
+import { BillingTable } from "@/components/admin/BillingTable";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { format } from "date-fns";
 import { UserPlus, Trash2 } from "lucide-react";
@@ -90,12 +91,14 @@ export default async function ClienteDetallePage({ params, searchParams }: Props
     .select("id, full_name, phone, role, created_at")
     .eq("organization_id", id);
 
-  const { data: requests } = await supabase
+  // Traer TODAS las solicitudes para la tabla de facturación
+  const { data: allRequests } = await supabase
     .from("certificate_requests")
-    .select("id, reference_code, property_address, status, created_at")
+    .select("id, reference_code, property_address, status, is_paid, paid_at, delivered_at, created_at")
     .eq("organization_id", id)
-    .order("created_at", { ascending: false })
-    .limit(5);
+    .order("created_at", { ascending: false });
+
+  const requests = allRequests ?? [];
 
   const updateOrgBound = updateOrg.bind(null, id);
   const deleteOrgBound = deleteOrg.bind(null, id);
@@ -132,6 +135,9 @@ export default async function ClienteDetallePage({ params, searchParams }: Props
           {error}
         </div>
       )}
+
+      {/* Sección de facturación — ancho completo */}
+      <BillingTable requests={requests} orgName={org.name} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Formulario de edición */}
@@ -179,7 +185,7 @@ export default async function ClienteDetallePage({ params, searchParams }: Props
           </CardContent>
         </Card>
 
-        {/* Usuarios */}
+        {/* Usuarios + últimas solicitudes */}
         <div className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
@@ -212,14 +218,14 @@ export default async function ClienteDetallePage({ params, searchParams }: Props
           </Card>
 
           {/* Últimas solicitudes */}
-          {requests && requests.length > 0 && (
+          {requests.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Últimas solicitudes</CardTitle>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
-                  {requests.map((r) => (
+                  {requests.slice(0, 5).map((r) => (
                     <li key={r.id} className="flex items-center justify-between text-sm">
                       <Link
                         href={`/admin/solicitudes/${r.id}`}
@@ -227,7 +233,7 @@ export default async function ClienteDetallePage({ params, searchParams }: Props
                       >
                         {r.reference_code ?? "—"}
                       </Link>
-                      <StatusBadge status={r.status} />
+                      <StatusBadge status={r.status as "submitted"} />
                     </li>
                   ))}
                 </ul>

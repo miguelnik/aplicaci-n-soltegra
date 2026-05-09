@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Download, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PaymentToggle } from "@/components/admin/PaymentToggle";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -115,6 +116,13 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
         {/* Columna derecha: acciones admin */}
         <div className="space-y-4">
           <StatusChanger requestId={req.id} currentStatus={req.status} />
+          {req.status !== "draft" && req.status !== "cancelled" && (
+            <PaymentToggle
+              requestId={req.id}
+              isPaid={req.is_paid}
+              paidAt={req.paid_at}
+            />
+          )}
           <PdfUploader
             requestId={req.id}
             organizationId={req.organization_id}

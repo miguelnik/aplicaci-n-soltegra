@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { StatusBadge } from "@/components/client/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { ArrowRight, AlertTriangle } from "lucide-react";
+import { ArrowRight, AlertTriangle, CheckCircle2, CircleDashed } from "lucide-react";
 
 const STATUSES = [
   { value: "", label: "Todas" },
@@ -27,7 +27,7 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
 
   let query = supabase
     .from("certificate_requests")
-    .select(`id, reference_code, property_address, status, created_at, estimated_delivery_date, client_deadline, organizations(name)`)
+    .select(`id, reference_code, property_address, status, created_at, estimated_delivery_date, client_deadline, is_paid, organizations(name)`)
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -64,6 +64,7 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
               <th className="px-4 py-3 text-left font-medium">Cliente</th>
               <th className="px-4 py-3 text-left font-medium">Dirección</th>
               <th className="px-4 py-3 text-left font-medium">Estado</th>
+              <th className="px-4 py-3 text-left font-medium">Pago</th>
               <th className="px-4 py-3 text-left font-medium">Fecha</th>
               <th className="px-4 py-3"></th>
             </tr>
@@ -87,6 +88,15 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
                 </td>
                 <td className="px-4 py-3">
                   <StatusBadge status={r.status} />
+                </td>
+                <td className="px-4 py-3">
+                  {r.status !== "draft" && r.status !== "cancelled" && (
+                    r.is_paid ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <CircleDashed className="h-4 w-4 text-orange-500" />
+                    )
+                  )}
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
                   <div>{format(new Date(r.created_at), "dd/MM/yy")}</div>

@@ -3,7 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Building2, PlusCircle, Users } from "lucide-react";
+import { Building2, PlusCircle, Users, CheckCircle2, CircleDashed } from "lucide-react";
 
 export default async function ClientesPage() {
   await requireAdmin();
@@ -14,7 +14,7 @@ export default async function ClientesPage() {
     .select(`
       id, name, cif, contact_email, contact_phone, created_at,
       profiles(count),
-      certificate_requests(count)
+      certificate_requests(id, status, is_paid)
     `)
     .order("name");
 
@@ -34,8 +34,11 @@ export default async function ClientesPage() {
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {orgs.map((org) => {
             const userCount = (org.profiles as unknown as { count: number }[])?.[0]?.count ?? 0;
-            const reqCount =
-              (org.certificate_requests as unknown as { count: number }[])?.[0]?.count ?? 0;
+            const reqs = (org.certificate_requests as unknown as { id: string; status: string; is_paid: boolean }[]) ?? [];
+            // Solo contamos facturables (no borradores ni canceladas)
+            const billable = reqs.filter((r) => r.status !== "draft" && r.status !== "cancelled");
+            const paidCount = billable.filter((r) => r.is_paid).length;
+            const unpaidCount = billable.length - paidCount;
 
             return (
               <Link key={org.id} href={`/admin/clientes/${org.id}`}>
@@ -57,13 +60,27 @@ export default async function ClientesPage() {
                         {org.contact_email}
                       </p>
                     )}
-                    <div className="flex gap-4 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Users className="h-3 w-3" />
                         {userCount} usuario{userCount !== 1 ? "s" : ""}
                       </span>
-                      <span>{reqCount} certificado{reqCount !== 1 ? "s" : ""}</span>
+                      <span>{reqs.length} certificado{reqs.length !== 1 ? "s" : ""}</span>
                     </div>
+                    {billable.length > 0 && (
+                      <div className="mt-2 flex gap-3 border-t pt-2 text-xs">
+                        <span className="flex items-center gap-1 text-green-700">
+                          <CheckCircle2 className="h-3 w-3" />
+                          {paidCount} cobrado{paidCount !== 1 ? "s" : ""}
+                        </span>
+                        {unpaidCount > 0 && (
+                          <span className="flex items-center gap-1 text-orange-600">
+                            <CircleDashed className="h-3 w-3" />
+                            {unpaidCount} pendiente{unpaidCount !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </Link>
