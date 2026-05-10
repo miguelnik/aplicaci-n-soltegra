@@ -60,6 +60,12 @@ drop index if exists form_schemas_one_current;
 create unique index if not exists form_schemas_current_per_service
   on form_schemas (service_type_id) where is_current = true;
 
+-- También: la constraint UNIQUE en (version) debe ser por servicio, no global,
+-- para que cada servicio pueda tener su propia versión 1, 2, 3...
+alter table form_schemas drop constraint if exists form_schemas_version_key;
+alter table form_schemas
+  add constraint form_schemas_version_per_service_key unique (service_type_id, version);
+
 -- 4) Añadir service_type_id a certificate_requests
 alter table certificate_requests
   add column if not exists service_type_id uuid references service_types(id);
