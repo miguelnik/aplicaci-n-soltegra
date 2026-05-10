@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/client/StatusBadge";
 import { CheckCircle2, CircleDashed, CreditCard, Loader2 } from "lucide-react";
-import { format } from "date-fns";
 
 interface Request {
   id: string;
@@ -19,6 +18,7 @@ interface Request {
   paid_at: string | null;
   delivered_at: string | null;
   created_at: string;
+  service_types?: { name: string } | { name: string }[] | null;
 }
 
 interface Props {
@@ -185,6 +185,7 @@ export function BillingTable({ requests, orgName }: Props) {
                   />
                 </th>
                 <th className="px-3 py-2 text-left font-medium">Referencia</th>
+                <th className="hidden px-3 py-2 text-left font-medium md:table-cell">Servicio</th>
                 <th className="hidden px-3 py-2 text-left font-medium sm:table-cell">Dirección</th>
                 <th className="px-3 py-2 text-left font-medium">Estado</th>
                 <th className="px-3 py-2 text-left font-medium">Pago</th>
@@ -210,6 +211,14 @@ export function BillingTable({ requests, orgName }: Props) {
                   </td>
                   <td className="px-3 py-2 font-mono text-xs font-medium">
                     {r.reference_code ?? "—"}
+                  </td>
+                  <td className="hidden px-3 py-2 text-muted-foreground md:table-cell">
+                    {(() => {
+                      const st = r.service_types;
+                      if (!st) return "—";
+                      const name = Array.isArray(st) ? st[0]?.name : st.name;
+                      return name ?? "—";
+                    })()}
                   </td>
                   <td className="hidden max-w-[200px] truncate px-3 py-2 text-muted-foreground sm:table-cell">
                     {r.property_address ?? "—"}

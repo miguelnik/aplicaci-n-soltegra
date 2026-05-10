@@ -31,7 +31,7 @@ export default async function ClientDashboardPage({ searchParams }: Props) {
 
   const { data: allRequests } = await supabase
     .from("certificate_requests")
-    .select("id, status, property_address, reference_code, estimated_delivery_date, created_at, certificate_pdf_path")
+    .select("id, status, property_address, reference_code, estimated_delivery_date, created_at, certificate_pdf_path, service_types(name)")
     .eq("organization_id", orgId)
     .not("status", "eq", "cancelled")
     .order("created_at", { ascending: false });
@@ -70,7 +70,7 @@ export default async function ClientDashboardPage({ searchParams }: Props) {
           <h1 className="text-2xl font-bold">
             Hola{profile.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""}
           </h1>
-          <p className="text-muted-foreground">Panel de certificados energéticos</p>
+          <p className="text-muted-foreground">Panel de proyectos</p>
         </div>
         <div className="flex gap-2">
           <Button asChild>
@@ -175,6 +175,9 @@ export default async function ClientDashboardPage({ searchParams }: Props) {
                   <div className="min-w-0 space-y-0.5">
                     <p className="truncate font-medium">{req.property_address ?? "Sin dirección"}</p>
                     <p className="text-xs text-muted-foreground">
+                      {(req.service_types as unknown as { name: string } | null)?.name && (
+                        <>{(req.service_types as unknown as { name: string }).name} · </>
+                      )}
                       {req.reference_code ?? "Borrador"} · {format(new Date(req.created_at), "dd/MM/yyyy")}
                     </p>
                   </div>

@@ -9,7 +9,7 @@ import { FormRenderer } from "@/components/forms/FormRenderer";
 import type { FormSchema } from "@/lib/form-schema/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { ArrowLeft, Download, FileText, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Download, FileText, CheckCircle2, Clock, AlertTriangle, MessageSquare } from "lucide-react";
 import { DeleteDraftButton } from "./DeleteDraftButton";
 
 const STATUS_STEPS = [
@@ -114,7 +114,7 @@ export default async function SolicitudDetallePage({ params }: Props) {
 
   const { data: req } = await supabase
     .from("certificate_requests")
-    .select(`*, form_schemas(schema)`)
+    .select(`*, form_schemas(schema), service_types(name, slug)`)
     .eq("id", id)
     .eq("organization_id", profile.organization_id!)
     .single();
@@ -158,9 +158,27 @@ export default async function SolicitudDetallePage({ params }: Props) {
           <StatusBadge status={req.status} />
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
+          {(req.service_types as unknown as { name: string } | null)?.name && (
+            <><span className="font-medium">{(req.service_types as unknown as { name: string }).name}</span> · </>
+          )}
           Solicitud creada el {format(new Date(req.created_at), "d 'de' MMMM 'de' yyyy", { locale: es })}
         </p>
       </div>
+
+      {/* Mensaje del equipo Soltegra al cliente */}
+      {req.client_notes && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm text-blue-900">
+              <MessageSquare className="h-4 w-4" />
+              Mensaje del equipo Soltegra
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="whitespace-pre-wrap text-sm text-blue-900">{req.client_notes}</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Timeline */}
       {!isDraft && (

@@ -1,56 +1,56 @@
-import { redirect } from "next/navigation";
+import Link from "next/link";
 import { requireClient } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { NuevaSolicitudForm } from "./NuevaSolicitudForm";
-import type { FormSchema } from "@/lib/form-schema/types";
+import { getActiveServices } from "@/lib/services";
+import { Card, CardContent } from "@/components/ui/card";
+import { Briefcase, ChevronRight } from "lucide-react";
 
-export default async function NuevaSolicitudPage() {
-  const profile = await requireClient();
-  const supabase = await createSupabaseServerClient();
+export default async function NuevaSolicitudPickerPage() {
+  await requireClient();
+  const services = await getActiveServices();
 
-  // Schema actual del formulario
-  const { data: schemaRow } = await supabase
-    .from("form_schemas")
-    .select("id, version, schema")
-    .eq("is_current", true)
-    .single();
-
-  if (!schemaRow) {
+  if (services.length === 0) {
     return (
-      <div className="py-12 text-center text-muted-foreground">
-        No hay formulario configurado. Contacta con Soltegra.
+      <div className="mx-auto max-w-2xl py-12 text-center text-muted-foreground">
+        No hay servicios disponibles. Contacta con Soltegra.
       </div>
     );
   }
 
-  // Crear el borrador inmediatamente para tener el ID y poder subir archivos
-  const { data: request, error } = await supabase
-    .from("certificate_requests")
-    .insert({
-      organization_id: profile.organization_id!,
-      created_by: profile.id,
-      form_schema_id: schemaRow.id,
-      form_data: {},
-      status: "draft",
-    })
-    .select("id")
-    .single();
-
-  if (error || !request) redirect("/solicitudes");
+  // Si solo hay un servicio, redirigir directo (UX mejor — no hay que elegir)
+  if (services.length === 1) {
+    const { redirect } = await import("next/navigation");
+    redirect(`/solicitudes/nueva/${services[0].slug}`);
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Nueva solicitud</h1>
         <p className="text-muted-foreground">
-          Rellena los datos de la vivienda y sube la documentación necesaria.
+          Elige el tipo de servicio que necesitas.
         </p>
       </div>
-      <NuevaSolicitudForm
-        schema={schemaRow.schema as unknown as FormSchema}
-        requestId={request.id}
-        organizationId={profile.organization_id!}
-      />
+
+      <div className="space-y-2">
+        {services.map((s) => (
+          <Link key={s.id} href={`/solicitudes/nueva/${s.slug}`}>
+            <Card className="cursor-pointer transition-shadow hover:shadow-md">
+              <CardContent className="flex items-center gap-4 py-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <Briefcase className="h-5 w-5 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold">{s.name}</p>
+                  {s.description && (
+                    <p className="text-sm text-muted-foreground line-clamp-1">{s.description}</p>
+                  )}
+                </div>
+                <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }

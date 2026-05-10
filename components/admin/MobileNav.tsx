@@ -8,9 +8,9 @@ import {
   FileText,
   LayoutDashboard,
   Menu,
-  Settings,
   Users,
   Building2,
+  Briefcase,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -19,7 +19,7 @@ const links = [
   { href: "/admin/solicitudes", label: "Solicitudes", icon: FileText },
   { href: "/admin/clientes", label: "Clientes", icon: Building2 },
   { href: "/admin/usuarios", label: "Usuarios", icon: Users },
-  { href: "/admin/formulario", label: "Formulario", icon: Settings },
+  { href: "/admin/servicios", label: "Servicios", icon: Briefcase },
 ];
 
 export function AdminMobileNav() {

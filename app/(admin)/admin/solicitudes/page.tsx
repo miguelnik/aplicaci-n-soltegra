@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getActiveServices } from "@/lib/services";
 import { StatusBadge } from "@/components/client/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -17,34 +18,48 @@ const STATUSES = [
 ];
 
 interface Props {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; service?: string }>;
 }
 
 export default async function AdminSolicitudesPage({ searchParams }: Props) {
   await requireAdmin();
-  const { status } = await searchParams;
+  const { status, service: serviceSlug } = await searchParams;
   const supabase = await createSupabaseServerClient();
+
+  const services = await getActiveServices();
+  const selectedService = serviceSlug ? services.find((s) => s.slug === serviceSlug) : null;
 
   let query = supabase
     .from("certificate_requests")
-    .select(`id, reference_code, property_address, status, created_at, estimated_delivery_date, client_deadline, is_paid, organizations(name)`)
+    .select(`id, reference_code, property_address, status, created_at, estimated_delivery_date, client_deadline, is_paid, organizations(name), service_types(name)`)
     .order("created_at", { ascending: false })
     .limit(50);
 
   if (status) query = query.eq("status", status);
+  if (selectedService) query = query.eq("service_type_id", selectedService.id);
 
   const { data: requests } = await query;
+
+  function buildHref(part: { status?: string; service?: string }): string {
+    const params = new URLSearchParams();
+    const finalStatus = part.status !== undefined ? part.status : status;
+    const finalService = part.service !== undefined ? part.service : serviceSlug;
+    if (finalStatus) params.set("status", finalStatus);
+    if (finalService) params.set("service", finalService);
+    const qs = params.toString();
+    return qs ? `/admin/solicitudes?${qs}` : "/admin/solicitudes";
+  }
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Solicitudes</h1>
 
-      {/* Filtros */}
+      {/* Filtros por estado */}
       <div className="flex flex-wrap gap-2">
         {STATUSES.map((s) => (
           <Link
             key={s.value}
-            href={s.value ? `/admin/solicitudes?status=${s.value}` : "/admin/solicitudes"}
+            href={buildHref({ status: s.value })}
             className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
               (status ?? "") === s.value
                 ? "border-primary bg-primary text-white"
@@ -56,12 +71,43 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
         ))}
       </div>
 
+      {/* Filtros por servicio */}
+      {services.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground">Servicio:</span>
+          <Link
+            href={buildHref({ service: "" })}
+            className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+              !serviceSlug
+                ? "border-primary bg-primary text-white"
+                : "border-border hover:border-primary/50"
+            }`}
+          >
+            Todos
+          </Link>
+          {services.map((s) => (
+            <Link
+              key={s.id}
+              href={buildHref({ service: s.slug })}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                serviceSlug === s.slug
+                  ? "border-primary bg-primary text-white"
+                  : "border-border hover:border-primary/50"
+              }`}
+            >
+              {s.name}
+            </Link>
+          ))}
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full min-w-[600px] text-sm">
           <thead className="bg-muted/50">
             <tr>
               <th className="px-4 py-3 text-left font-medium">Referencia</th>
               <th className="px-4 py-3 text-left font-medium">Cliente</th>
+              <th className="hidden px-4 py-3 text-left font-medium md:table-cell">Servicio</th>
               <th className="px-4 py-3 text-left font-medium">Dirección</th>
               <th className="px-4 py-3 text-left font-medium">Estado</th>
               <th className="px-4 py-3 text-left font-medium">Pago</th>
@@ -82,6 +128,9 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
                 </td>
                 <td className="px-4 py-3 text-muted-foreground">
                   {(r.organizations as unknown as { name: string } | null)?.name ?? "—"}
+                </td>
+                <td className="hidden px-4 py-3 text-muted-foreground md:table-cell">
+                  {(r.service_types as unknown as { name: string } | null)?.name ?? "—"}
                 </td>
                 <td className="max-w-[200px] truncate px-4 py-3">
                   {r.property_address ?? "—"}

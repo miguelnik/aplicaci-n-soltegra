@@ -94,7 +94,7 @@ export default async function ClienteDetallePage({ params, searchParams }: Props
   // Traer TODAS las solicitudes para la tabla de facturación
   const { data: allRequests } = await supabase
     .from("certificate_requests")
-    .select("id, reference_code, property_address, status, is_paid, paid_at, delivered_at, created_at")
+    .select("id, reference_code, property_address, status, is_paid, paid_at, delivered_at, created_at, service_types(name)")
     .eq("organization_id", id)
     .order("created_at", { ascending: false });
 

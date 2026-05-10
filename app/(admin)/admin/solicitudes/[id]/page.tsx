@@ -13,6 +13,7 @@ import { es } from "date-fns/locale";
 import { Download, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PaymentToggle } from "@/components/admin/PaymentToggle";
+import { ClientNotesEditor } from "@/components/admin/ClientNotesEditor";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -29,7 +30,8 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
       *,
       organizations(name, contact_email),
       profiles(full_name),
-      form_schemas(schema)
+      form_schemas(schema),
+      service_types(name, slug)
     `)
     .eq("id", id)
     .single();
@@ -58,8 +60,11 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
           <StatusBadge status={req.status} />
         </div>
         <p className="text-sm text-muted-foreground">
-          {(req.organizations as unknown as { name: string } | null)?.name} ·{" "}
-          Creada el {format(new Date(req.created_at), "d 'de' MMMM 'de' yyyy", { locale: es })}
+          {(req.organizations as unknown as { name: string } | null)?.name}
+          {(req.service_types as unknown as { name: string } | null)?.name && (
+            <> · <span className="font-medium">{(req.service_types as unknown as { name: string }).name}</span></>
+          )}
+          {" "}· Creada el {format(new Date(req.created_at), "d 'de' MMMM 'de' yyyy", { locale: es })}
         </p>
       </div>
 
@@ -123,6 +128,10 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
               paidAt={req.paid_at}
             />
           )}
+          <ClientNotesEditor
+            requestId={req.id}
+            initialNotes={req.client_notes ?? null}
+          />
           <PdfUploader
             requestId={req.id}
             organizationId={req.organization_id}

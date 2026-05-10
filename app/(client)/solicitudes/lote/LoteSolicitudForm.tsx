@@ -5,19 +5,26 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, MapPin, Plus, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
+interface ServiceOption {
+  id: string;
+  slug: string;
+  name: string;
+  schemaId: string;
+}
+
 interface Props {
   organizationId: string;
   profileId: string;
-  formSchemaId: string;
+  services: ServiceOption[];
 }
 
-export function LoteSolicitudForm({ organizationId, profileId, formSchemaId }: Props) {
+export function LoteSolicitudForm({ organizationId, profileId, services }: Props) {
+  const [serviceId, setServiceId] = useState<string>(services[0]?.id ?? "");
   const [addresses, setAddresses] = useState<string[]>([""]);
   const [sending, setSending] = useState(false);
   const router = useRouter();
@@ -52,12 +59,19 @@ export function LoteSolicitudForm({ organizationId, profileId, formSchemaId }: P
       return;
     }
 
+    const service = services.find((s) => s.id === serviceId);
+    if (!service) {
+      toast.error("Selecciona un servicio");
+      return;
+    }
+
     setSending(true);
 
     const rows = valid.map((addr) => ({
       organization_id: organizationId,
       created_by: profileId,
-      form_schema_id: formSchemaId,
+      form_schema_id: service.schemaId,
+      service_type_id: service.id,
       form_data: { direccion: addr },
       property_address: addr,
       status: "draft" as const,
@@ -82,9 +96,30 @@ export function LoteSolicitudForm({ organizationId, profileId, formSchemaId }: P
 
   return (
     <div className="space-y-4">
+      {services.length > 1 && (
+        <Card>
+          <CardContent className="space-y-2 pt-6">
+            <Label htmlFor="service">Tipo de servicio</Label>
+            <select
+              id="service"
+              value={serviceId}
+              onChange={(e) => setServiceId(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+            >
+              {services.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Todas las solicitudes en este lote se crearán para este servicio.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardContent className="space-y-3 pt-6">
-          <Label>Direcciones de las viviendas</Label>
+          <Label>Direcciones</Label>
           <p className="text-xs text-muted-foreground">
             Una dirección por fila. También puedes pegar varias líneas de golpe.
           </p>

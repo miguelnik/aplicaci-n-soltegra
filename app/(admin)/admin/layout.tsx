@@ -8,9 +8,9 @@ import {
   FileText,
   LayoutDashboard,
   LogOut,
-  Settings,
   Users,
   Building2,
+  Briefcase,
 } from "lucide-react";
 import { AdminMobileNav } from "@/components/admin/MobileNav";
 
@@ -86,9 +86,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </Link>
           </Button>
           <Button variant="ghost" size="sm" className="justify-start" asChild>
-            <Link href="/admin/formulario">
-              <Settings className="h-4 w-4" />
-              Formulario
+            <Link href="/admin/servicios">
+              <Briefcase className="h-4 w-4" />
+              Servicios
             </Link>
           </Button>
         </nav>

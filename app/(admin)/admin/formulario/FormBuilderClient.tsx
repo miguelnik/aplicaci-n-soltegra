@@ -23,9 +23,10 @@ const FIELD_TYPES: { value: FieldType; label: string }[] = [
 interface Props {
   currentSchema: FormSchema;
   currentVersion: number;
+  serviceTypeId: string;
 }
 
-export function FormBuilderClient({ currentSchema, currentVersion }: Props) {
+export function FormBuilderClient({ currentSchema, currentVersion, serviceTypeId }: Props) {
   const [schema, setSchema] = useState<FormSchema>(currentSchema);
   const [saving, setSaving] = useState(false);
   const [openSections, setOpenSections] = useState<Set<string>>(
@@ -107,10 +108,14 @@ export function FormBuilderClient({ currentSchema, currentVersion }: Props) {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await saveFormSchema(schema);
-      toast.success(`Schema guardado como versión ${currentVersion + 1}`);
-    } catch {
-      toast.error("Error al guardar el schema");
+      const result = await saveFormSchema(schema, serviceTypeId);
+      if (!result.ok) {
+        toast.error(`Error: ${result.error}`);
+        return;
+      }
+      toast.success(`Formulario guardado como versión ${currentVersion + 1}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al guardar");
     } finally {
       setSaving(false);
     }
