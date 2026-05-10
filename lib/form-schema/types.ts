@@ -84,6 +84,12 @@ export interface Section {
 
 export interface FormSchema {
   sections: Section[];
+  /**
+   * Key del campo cuyo valor se usa como nombre/título del proyecto en las
+   * listas (admin y cliente). Solo un campo por schema. Si no se indica,
+   * el proyecto se muestra solo con la referencia.
+   */
+  titleFieldKey?: string;
 }
 
 // ============================================================================

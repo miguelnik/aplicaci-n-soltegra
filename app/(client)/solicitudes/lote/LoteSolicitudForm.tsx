@@ -7,7 +7,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, MapPin, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 interface ServiceOption {
@@ -15,6 +15,8 @@ interface ServiceOption {
   slug: string;
   name: string;
   schemaId: string;
+  titleFieldKey: string;
+  titleFieldLabel: string;
 }
 
 interface Props {
@@ -25,27 +27,29 @@ interface Props {
 
 export function LoteSolicitudForm({ organizationId, profileId, services }: Props) {
   const [serviceId, setServiceId] = useState<string>(services[0]?.id ?? "");
-  const [addresses, setAddresses] = useState<string[]>([""]);
+  const [values, setValues] = useState<string[]>([""]);
   const [sending, setSending] = useState(false);
   const router = useRouter();
   const supabase = createSupabaseBrowserClient();
 
+  const selectedService = services.find((s) => s.id === serviceId);
+
   function addRow() {
-    setAddresses((prev) => [...prev, ""]);
+    setValues((prev) => [...prev, ""]);
   }
 
   function removeRow(idx: number) {
-    setAddresses((prev) => prev.filter((_, i) => i !== idx));
+    setValues((prev) => prev.filter((_, i) => i !== idx));
   }
 
   function updateRow(idx: number, value: string) {
-    setAddresses((prev) => prev.map((v, i) => (i === idx ? value : v)));
+    setValues((prev) => prev.map((v, i) => (i === idx ? value : v)));
   }
 
   function handlePaste(idx: number, text: string) {
     const lines = text.split(/\n/).map((l) => l.trim()).filter(Boolean);
     if (lines.length <= 1) return;
-    setAddresses((prev) => {
+    setValues((prev) => {
       const next = [...prev];
       next.splice(idx, 1, ...lines);
       return next;
@@ -53,27 +57,27 @@ export function LoteSolicitudForm({ organizationId, profileId, services }: Props
   }
 
   async function handleSubmit() {
-    const valid = addresses.map((a) => a.trim()).filter(Boolean);
+    const valid = values.map((a) => a.trim()).filter(Boolean);
     if (valid.length === 0) {
-      toast.error("Añade al menos una dirección");
+      toast.error(`Añade al menos un valor de "${selectedService?.titleFieldLabel ?? "título"}"`);
       return;
     }
 
-    const service = services.find((s) => s.id === serviceId);
-    if (!service) {
+    if (!selectedService) {
       toast.error("Selecciona un servicio");
       return;
     }
 
     setSending(true);
 
-    const rows = valid.map((addr) => ({
+    const titleKey = selectedService.titleFieldKey;
+    const rows = valid.map((value) => ({
       organization_id: organizationId,
       created_by: profileId,
-      form_schema_id: service.schemaId,
-      service_type_id: service.id,
-      form_data: { direccion: addr },
-      property_address: addr,
+      form_schema_id: selectedService.schemaId,
+      service_type_id: selectedService.id,
+      form_data: { [titleKey]: value },
+      property_address: value,
       status: "draft" as const,
     }));
 
@@ -92,7 +96,8 @@ export function LoteSolicitudForm({ organizationId, profileId, services }: Props
     router.push("/dashboard?status=draft");
   }
 
-  const validCount = addresses.filter((a) => a.trim()).length;
+  const validCount = values.filter((a) => a.trim()).length;
+  const fieldLabel = selectedService?.titleFieldLabel ?? "Valor";
 
   return (
     <div className="space-y-4">
@@ -103,7 +108,10 @@ export function LoteSolicitudForm({ organizationId, profileId, services }: Props
             <select
               id="service"
               value={serviceId}
-              onChange={(e) => setServiceId(e.target.value)}
+              onChange={(e) => {
+                setServiceId(e.target.value);
+                setValues([""]);
+              }}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
             >
               {services.map((s) => (
@@ -119,15 +127,14 @@ export function LoteSolicitudForm({ organizationId, profileId, services }: Props
 
       <Card>
         <CardContent className="space-y-3 pt-6">
-          <Label>Direcciones</Label>
+          <Label>{fieldLabel}</Label>
           <p className="text-xs text-muted-foreground">
-            Una dirección por fila. También puedes pegar varias líneas de golpe.
+            Un valor por fila. También puedes pegar varias líneas de golpe.
           </p>
-          {addresses.map((addr, idx) => (
+          {values.map((val, idx) => (
             <div key={idx} className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
               <Input
-                value={addr}
+                value={val}
                 onChange={(e) => updateRow(idx, e.target.value)}
                 onPaste={(e) => {
                   const text = e.clipboardData.getData("text");
@@ -136,9 +143,9 @@ export function LoteSolicitudForm({ organizationId, profileId, services }: Props
                     handlePaste(idx, text);
                   }
                 }}
-                placeholder={`Dirección ${idx + 1} — ej. C/ Gran Vía 15, 3ºA, Granada`}
+                placeholder={`${fieldLabel} ${idx + 1}`}
               />
-              {addresses.length > 1 && (
+              {values.length > 1 && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -153,18 +160,18 @@ export function LoteSolicitudForm({ organizationId, profileId, services }: Props
           ))}
           <Button variant="outline" size="sm" type="button" onClick={addRow}>
             <Plus className="h-4 w-4" />
-            Añadir dirección
+            Añadir fila
           </Button>
         </CardContent>
       </Card>
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {validCount} dirección{validCount !== 1 ? "es" : ""} · se crearán como borradores
+          {validCount} {validCount === 1 ? "solicitud" : "solicitudes"} · se crearán como borradores
         </p>
         <Button onClick={handleSubmit} disabled={sending || validCount === 0}>
           {sending && <Loader2 className="h-4 w-4 animate-spin" />}
-          {sending ? "Creando..." : `Crear ${validCount} solicitud${validCount !== 1 ? "es" : ""}`}
+          {sending ? "Creando..." : `Crear ${validCount} ${validCount === 1 ? "solicitud" : "solicitudes"}`}
         </Button>
       </div>
     </div>

@@ -22,11 +22,20 @@ export function NuevaSolicitudForm({ schema, requestId, organizationId }: Props)
   const supabase = createSupabaseBrowserClient();
 
   async function updateFormData(data: FormData) {
+    // Si el schema define un campo título, usamos su valor como nombre del proyecto.
+    // Fallback: el campo "direccion" si existe (por compatibilidad con el schema antiguo).
+    const titleKey = schema.titleFieldKey ?? "direccion";
+    const titleValue = data[titleKey];
+    const propertyAddress =
+      typeof titleValue === "string" || typeof titleValue === "number"
+        ? String(titleValue)
+        : null;
+
     return supabase
       .from("certificate_requests")
       .update({
         form_data: data,
-        property_address: (data.direccion as string) || null,
+        property_address: propertyAddress,
         client_deadline: deadline || null,
       })
       .eq("id", requestId);

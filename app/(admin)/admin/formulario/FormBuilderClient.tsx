@@ -75,10 +75,16 @@ export function FormBuilderClient({ currentSchema, currentVersion, serviceTypeId
       ),
     });
 
-  const removeField = (sectionIdx: number, fieldIdx: number) =>
+  const removeField = (sectionIdx: number, fieldIdx: number) => {
+    const removedKey = schema.sections[sectionIdx].fields?.[fieldIdx]?.key;
     updateSection(sectionIdx, {
       fields: (schema.sections[sectionIdx].fields ?? []).filter((_, i) => i !== fieldIdx),
     });
+    // Si el campo borrado era el título, limpiarlo
+    if (removedKey && schema.titleFieldKey === removedKey) {
+      setSchema((prev) => ({ ...prev, titleFieldKey: undefined }));
+    }
+  };
 
   const addFileBlock = (sectionIdx: number) =>
     updateSection(sectionIdx, {
@@ -121,6 +127,17 @@ export function FormBuilderClient({ currentSchema, currentVersion, serviceTypeId
     }
   };
 
+  // Campos disponibles para usar como título del proyecto.
+  // Excluimos checkbox y select (no aportan un nombre legible).
+  const titleCandidates = schema.sections.flatMap((s) =>
+    (s.fields ?? [])
+      .filter((f) => f.type === "text" || f.type === "textarea" || f.type === "number" || f.type === "date")
+      .map((f) => ({ key: f.key, label: f.label, sectionTitle: s.title })),
+  );
+
+  const setTitleFieldKey = (key: string) =>
+    setSchema((prev) => ({ ...prev, titleFieldKey: key || undefined }));
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -130,6 +147,35 @@ export function FormBuilderClient({ currentSchema, currentVersion, serviceTypeId
           {saving ? "Guardando..." : "Publicar nueva versión"}
         </Button>
       </div>
+
+      {/* Selector del campo que da nombre al proyecto */}
+      <Card>
+        <CardContent className="space-y-2 pt-4">
+          <Label className="text-sm font-medium">Campo que da nombre al proyecto</Label>
+          <p className="text-xs text-muted-foreground">
+            Cuando el cliente cree una solicitud, el valor de este campo se mostrará como
+            título del proyecto en las listas (admin y cliente). Solo se puede elegir uno.
+          </p>
+          <select
+            value={schema.titleFieldKey ?? ""}
+            onChange={(e) => setTitleFieldKey(e.target.value)}
+            className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+            disabled={titleCandidates.length === 0}
+          >
+            <option value="">— Sin campo título —</option>
+            {titleCandidates.map((c) => (
+              <option key={c.key} value={c.key}>
+                {c.label} ({c.sectionTitle})
+              </option>
+            ))}
+          </select>
+          {titleCandidates.length === 0 && (
+            <p className="text-xs text-amber-600">
+              Añade al menos un campo de texto, número o fecha para poder elegir uno como título.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {schema.sections.map((section, sIdx) => (
         <Card key={section.id}>

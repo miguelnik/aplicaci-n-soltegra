@@ -17,31 +17,61 @@ export default async function SolicitudLotePage() {
     );
   }
 
-  // Cargar el schema actual de cada servicio para poder mapear servicio → form_schema_id
+  // Cargar el schema actual de cada servicio
   const { data: schemaRows } = await supabase
     .from("form_schemas")
-    .select("id, service_type_id")
+    .select("id, service_type_id, schema")
     .eq("is_current", true);
 
-  const schemaByService = new Map<string, string>();
-  (schemaRows ?? []).forEach((r: { id: string; service_type_id: string }) => {
-    schemaByService.set(r.service_type_id, r.id);
+  type SchemaRow = { id: string; service_type_id: string; schema: { titleFieldKey?: string; sections?: { fields?: { key: string; label: string; type: string }[] }[] } };
+
+  const schemaByService = new Map<string, { id: string; titleFieldKey: string | null; titleFieldLabel: string | null }>();
+  (schemaRows ?? []).forEach((r: SchemaRow) => {
+    const titleKey = r.schema?.titleFieldKey ?? null;
+    let titleLabel: string | null = null;
+    if (titleKey) {
+      for (const section of r.schema?.sections ?? []) {
+        const f = section.fields?.find((field) => field.key === titleKey);
+        if (f) {
+          titleLabel = f.label;
+          break;
+        }
+      }
+    }
+    schemaByService.set(r.service_type_id, {
+      id: r.id,
+      titleFieldKey: titleKey,
+      titleFieldLabel: titleLabel,
+    });
   });
 
-  // Filtrar solo servicios que tengan schema configurado
+  // Solo permitimos lote para servicios con schema configurado Y campo título definido
   const servicesWithSchema = services
-    .filter((s) => schemaByService.has(s.id))
-    .map((s) => ({
-      id: s.id,
-      slug: s.slug,
-      name: s.name,
-      schemaId: schemaByService.get(s.id)!,
-    }));
+    .filter((s) => {
+      const meta = schemaByService.get(s.id);
+      return meta && meta.titleFieldKey;
+    })
+    .map((s) => {
+      const meta = schemaByService.get(s.id)!;
+      return {
+        id: s.id,
+        slug: s.slug,
+        name: s.name,
+        schemaId: meta.id,
+        titleFieldKey: meta.titleFieldKey!,
+        titleFieldLabel: meta.titleFieldLabel ?? "Valor",
+      };
+    });
 
   if (servicesWithSchema.length === 0) {
     return (
-      <div className="py-12 text-center text-muted-foreground">
-        Los servicios disponibles aún no tienen formulario configurado. Contacta con Soltegra.
+      <div className="mx-auto max-w-2xl py-12 text-center">
+        <p className="text-muted-foreground">
+          Ningún servicio disponible permite crear solicitudes en lote.
+        </p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          (El admin debe configurar un campo título en el formulario del servicio para habilitarlo).
+        </p>
       </div>
     );
   }

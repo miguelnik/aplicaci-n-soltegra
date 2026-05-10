@@ -172,12 +172,14 @@ export default async function ClientDashboardPage({ searchParams }: Props) {
             <Link key={req.id} href={`/solicitudes/${req.id}`}>
               <Card className="cursor-pointer transition-shadow hover:shadow-md">
                 <CardContent className="flex items-center justify-between gap-4 py-4">
-                  <div className="min-w-0 space-y-0.5">
-                    <p className="truncate font-medium">{req.property_address ?? "Sin dirección"}</p>
+                  <div className="min-w-0 space-y-1">
+                    {(req.service_types as unknown as { name: string } | null)?.name && (
+                      <span className="inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                        {(req.service_types as unknown as { name: string }).name}
+                      </span>
+                    )}
+                    <p className="truncate font-medium">{req.property_address ?? "Sin nombre"}</p>
                     <p className="text-xs text-muted-foreground">
-                      {(req.service_types as unknown as { name: string } | null)?.name && (
-                        <>{(req.service_types as unknown as { name: string }).name} · </>
-                      )}
                       {req.reference_code ?? "Borrador"} · {format(new Date(req.created_at), "dd/MM/yyyy")}
                     </p>
                   </div>
@@ -204,7 +206,7 @@ export default async function ClientDashboardPage({ searchParams }: Props) {
             <FileText className="h-12 w-12 text-muted-foreground/40" />
             <div>
               <p className="font-medium">
-                {searchQuery ? "Sin resultados" : "Sin certificados todavía"}
+                {searchQuery ? "Sin resultados" : "Sin proyectos todavía"}
               </p>
               <p className="text-sm text-muted-foreground">
                 {searchQuery

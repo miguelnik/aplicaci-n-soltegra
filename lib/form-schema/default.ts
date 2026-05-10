@@ -3,6 +3,7 @@ import type { FormSchema } from "./types";
 // Schema por defecto que se carga en el seed inicial.
 // El admin puede editarlo desde /admin/formulario.
 export const DEFAULT_FORM_SCHEMA: FormSchema = {
+  titleFieldKey: "direccion",
   sections: [
     {
       id: "vivienda",
