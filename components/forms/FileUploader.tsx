@@ -119,10 +119,15 @@ export function FileUploader({ fileBlock, requestId, organizationId, disabled }:
   const countError = validateFileCount(files.length, fileBlock);
   const isImage = (mime: string) => mime.startsWith("image/");
 
+  // react-dropzone tiene `multiple: true` como default si recibe undefined.
+  // Forzamos a boolean para respetar la configuración del admin.
+  const allowMultiple = fileBlock.multiple === true;
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: fileBlock.accept.reduce((acc, type) => ({ ...acc, [type]: [] }), {}),
-    multiple: fileBlock.multiple,
+    multiple: allowMultiple,
+    maxFiles: allowMultiple ? fileBlock.maxCount : 1,
     disabled: disabled || uploading,
   });
 

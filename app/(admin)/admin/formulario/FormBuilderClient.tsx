@@ -95,6 +95,7 @@ export function FormBuilderClient({ currentSchema, currentVersion, serviceTypeId
           label: "Nuevo archivo",
           accept: ["image/*"],
           required: false,
+          multiple: false,
         },
       ],
     });

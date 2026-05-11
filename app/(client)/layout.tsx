@@ -44,7 +44,7 @@ export default async function ClientLayout({ children }: { children: React.React
               <Button variant="ghost" size="sm" asChild>
                 <Link href="/solicitudes">
                   <FileText className="h-4 w-4" />
-                  Mis certificados
+                  Mis solicitudes
                 </Link>
               </Button>
               <Button variant="ghost" size="sm" asChild>

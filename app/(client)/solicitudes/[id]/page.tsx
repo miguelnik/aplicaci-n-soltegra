@@ -9,8 +9,10 @@ import { FormRenderer } from "@/components/forms/FormRenderer";
 import type { FormSchema } from "@/lib/form-schema/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { ArrowLeft, Download, FileText, CheckCircle2, Clock, AlertTriangle, MessageSquare } from "lucide-react";
+import { ArrowLeft, Download, FileText, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
 import { DeleteDraftButton } from "./DeleteDraftButton";
+import { MessageThread } from "@/components/messages/MessageThread";
+import { getRequestMessages } from "@/lib/messages";
 
 const STATUS_STEPS = [
   { key: "submitted", label: "Solicitud recibida", shortLabel: "Recibida" },
@@ -140,6 +142,9 @@ export default async function SolicitudDetallePage({ params }: Props) {
   const isDelivered = req.status === "delivered";
   const isDraft = req.status === "draft";
   const statusHistory = (req.status_history ?? []) as HistoryEntry[];
+  const messages = await getRequestMessages(id);
+  // El cliente solo puede escribir mensajes en solicitudes activas (no draft ni cancelled)
+  const canWriteMessages = req.status !== "draft" && req.status !== "cancelled";
 
   return (
     <div className="space-y-6">
@@ -148,7 +153,7 @@ export default async function SolicitudDetallePage({ params }: Props) {
         <div className="mb-1 flex items-center gap-2 text-sm text-muted-foreground">
           <Link href="/solicitudes" className="flex items-center gap-1 hover:text-primary">
             <ArrowLeft className="h-3.5 w-3.5" />
-            Mis certificados
+            Mis solicitudes
           </Link>
           <span>/</span>
           <span className="font-mono">{req.reference_code ?? id.slice(0, 8)}</span>
@@ -165,19 +170,16 @@ export default async function SolicitudDetallePage({ params }: Props) {
         </p>
       </div>
 
-      {/* Mensaje del equipo Soltegra al cliente */}
-      {req.client_notes && (
-        <Card className="border-blue-200 bg-blue-50">
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm text-blue-900">
-              <MessageSquare className="h-4 w-4" />
-              Mensaje del equipo Soltegra
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="whitespace-pre-wrap text-sm text-blue-900">{req.client_notes}</p>
-          </CardContent>
-        </Card>
+      {/* Conversación con el equipo Soltegra */}
+      {!isDraft && (
+        <MessageThread
+          requestId={req.id}
+          messages={messages}
+          currentRole="client"
+          title="Conversación con Soltegra"
+          placeholder="Escribe un mensaje para el equipo..."
+          disabled={!canWriteMessages}
+        />
       )}
 
       {/* Timeline */}

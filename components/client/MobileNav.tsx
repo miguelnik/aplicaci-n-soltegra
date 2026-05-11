@@ -9,7 +9,7 @@ import { useState } from "react";
 
 const links = [
   { href: "/dashboard", label: "Inicio", icon: LayoutDashboard },
-  { href: "/solicitudes", label: "Mis certificados", icon: FileText },
+  { href: "/solicitudes", label: "Mis solicitudes", icon: FileText },
   { href: "/solicitudes/nueva", label: "Nueva solicitud", icon: PlusCircle },
   { href: "/perfil", label: "Mi cuenta", icon: User },
 ];

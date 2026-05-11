@@ -13,7 +13,8 @@ import { es } from "date-fns/locale";
 import { Download, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PaymentToggle } from "@/components/admin/PaymentToggle";
-import { ClientNotesEditor } from "@/components/admin/ClientNotesEditor";
+import { MessageThread } from "@/components/messages/MessageThread";
+import { getRequestMessages } from "@/lib/messages";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -45,6 +46,7 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
     .order("uploaded_at");
 
   const schema = (req.form_schemas as unknown as { schema: FormSchema })?.schema;
+  const messages = await getRequestMessages(id);
 
   return (
     <div className="space-y-6">
@@ -120,7 +122,12 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
 
         {/* Columna derecha: acciones admin */}
         <div className="space-y-4">
-          <StatusChanger requestId={req.id} currentStatus={req.status} />
+          <StatusChanger
+            requestId={req.id}
+            currentStatus={req.status}
+            currentDeliveryDate={req.estimated_delivery_date}
+            currentInternalNotes={req.internal_notes}
+          />
           {req.status !== "draft" && req.status !== "cancelled" && (
             <PaymentToggle
               requestId={req.id}
@@ -128,9 +135,12 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
               paidAt={req.paid_at}
             />
           )}
-          <ClientNotesEditor
+          <MessageThread
             requestId={req.id}
-            initialNotes={req.client_notes ?? null}
+            messages={messages}
+            currentRole="admin"
+            title="Conversación con el cliente"
+            placeholder="Escribe un mensaje para el cliente..."
           />
           <PdfUploader
             requestId={req.id}

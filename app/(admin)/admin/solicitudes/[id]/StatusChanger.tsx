@@ -19,12 +19,21 @@ const STATUSES = [
 interface Props {
   requestId: string;
   currentStatus: string;
+  currentDeliveryDate?: string | null;
+  currentInternalNotes?: string | null;
 }
 
-export function StatusChanger({ requestId, currentStatus }: Props) {
+export function StatusChanger({
+  requestId,
+  currentStatus,
+  currentDeliveryDate,
+  currentInternalNotes,
+}: Props) {
   const [status, setStatus] = useState(currentStatus);
-  const [deliveryDate, setDeliveryDate] = useState("");
-  const [notes, setNotes] = useState("");
+  // Pre-rellenamos con el valor actual de la DB para que el admin pueda ver
+  // qué fecha está fijada y editarla, sin que se "borre" al recargar.
+  const [deliveryDate, setDeliveryDate] = useState(currentDeliveryDate ?? "");
+  const [notes, setNotes] = useState(currentInternalNotes ?? "");
   const [saving, setSaving] = useState(false);
   const router = useRouter();
 
