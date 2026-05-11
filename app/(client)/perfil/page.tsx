@@ -2,6 +2,7 @@ import { requireClient } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { ProfileForm } from "./ProfileForm";
+import { ChangePasswordForm } from "./ChangePasswordForm";
 
 export default async function PerfilPage() {
   const profile = await requireClient();
@@ -51,6 +52,7 @@ export default async function PerfilPage() {
         }}
         organization={organization}
       />
+      <ChangePasswordForm />
     </div>
   );
 }
