@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { sendEstadoActualizado, sendCertificadoListo } from "@/lib/email/send";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { sendCertificadoListo } from "@/lib/email/send";
 
 export async function POST(request: NextRequest) {
   try {
@@ -65,35 +63,24 @@ export async function POST(request: NextRequest) {
       property_address: string;
     };
 
-    // Enviar email de notificación (no bloquea la respuesta)
-    try {
-      const adminClient = createSupabaseAdminClient();
-      const { data: authUser } = await adminClient.auth.admin.getUserById(reqData.created_by);
-      const email = authUser?.user?.email;
+    // Solo enviar email al cliente cuando el estado pasa a "delivered"
+    if (newStatus === "delivered") {
+      try {
+        const adminClient = createSupabaseAdminClient();
+        const { data: authUser } = await adminClient.auth.admin.getUserById(reqData.created_by);
+        const email = authUser?.user?.email;
 
-      if (email) {
-        if (newStatus === "delivered") {
+        if (email) {
           await sendCertificadoListo({
             toEmail: email,
             referenceCode: reqData.reference_code ?? requestId,
             propertyAddress: reqData.property_address ?? "",
             requestId,
           });
-        } else {
-          await sendEstadoActualizado({
-            toEmail: email,
-            referenceCode: reqData.reference_code ?? requestId,
-            propertyAddress: reqData.property_address ?? "",
-            newStatus,
-            estimatedDelivery: deliveryDate
-              ? format(new Date(deliveryDate), "d 'de' MMMM 'de' yyyy", { locale: es })
-              : undefined,
-            requestId,
-          });
         }
+      } catch {
+        // El fallo del email no bloquea el cambio de estado
       }
-    } catch {
-      // Email failure should not block status update
     }
 
     return NextResponse.json({ ok: true });
