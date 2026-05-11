@@ -21,12 +21,24 @@ export default async function AdminDashboardPage() {
   const inProgress = counts?.filter((r) => r.status === "in_progress").length ?? 0;
   const delivered = counts?.filter((r) => r.status === "delivered").length ?? 0;
 
-  // Solicitudes con mensajes de clientes (para el badge de notificación)
+  // Solicitudes donde el último mensaje es del cliente (admin debe responder)
   const { data: msgRows } = await supabase
     .from("request_messages")
-    .select("request_id")
-    .eq("author_role", "client");
-  const requestsWithClientMessages = new Set((msgRows ?? []).map((m) => m.request_id));
+    .select("request_id, author_role, created_at")
+    .order("created_at", { ascending: false });
+
+  // Por cada solicitud, tomar el mensaje más reciente y ver si es del cliente
+  const latestByRequest = new Map<string, string>();
+  for (const m of msgRows ?? []) {
+    if (!latestByRequest.has(m.request_id)) {
+      latestByRequest.set(m.request_id, m.author_role);
+    }
+  }
+  const requestsWithClientMessages = new Set(
+    Array.from(latestByRequest.entries())
+      .filter(([, role]) => role === "client")
+      .map(([id]) => id),
+  );
 
   // Solicitudes recientes
   const { data: recent } = await supabase

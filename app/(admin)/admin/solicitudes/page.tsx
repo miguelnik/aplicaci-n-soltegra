@@ -40,16 +40,27 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
 
   const { data: requests } = await query;
 
-  // IDs de solicitudes que tienen al menos un mensaje de cliente (para mostrar indicador)
+  // IDs donde el último mensaje es del cliente (admin pendiente de responder)
   const requestIds = (requests ?? []).map((r) => r.id);
   let clientMessageIds = new Set<string>();
   if (requestIds.length > 0) {
     const { data: msgs } = await supabase
       .from("request_messages")
-      .select("request_id")
+      .select("request_id, author_role, created_at")
       .in("request_id", requestIds)
-      .eq("author_role", "client");
-    clientMessageIds = new Set((msgs ?? []).map((m) => m.request_id));
+      .order("created_at", { ascending: false });
+
+    const latestByRequest = new Map<string, string>();
+    for (const m of msgs ?? []) {
+      if (!latestByRequest.has(m.request_id)) {
+        latestByRequest.set(m.request_id, m.author_role);
+      }
+    }
+    clientMessageIds = new Set(
+      Array.from(latestByRequest.entries())
+        .filter(([, role]) => role === "client")
+        .map(([id]) => id),
+    );
   }
 
   function buildHref(part: { status?: string; service?: string }): string {
