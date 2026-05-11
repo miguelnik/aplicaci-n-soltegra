@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { sendNuevoMensaje } from "@/lib/email/send";
 
 /**
  * POST /api/messages
@@ -58,6 +60,42 @@ export async function POST(request: NextRequest) {
         { ok: false, error: error.message },
         { status: 400 },
       );
+    }
+
+    // ── Notificación por email (fire-and-forget, no bloquea la respuesta) ──
+    try {
+      // Obtener datos de la solicitud para el email
+      const { data: req } = await supabase
+        .from("certificate_requests")
+        .select("reference_code, property_address, created_by, organization_id")
+        .eq("id", requestId)
+        .single();
+
+      if (req) {
+        const authorName =
+          (await supabase.from("profiles").select("full_name").eq("id", user.id).single())
+            .data?.full_name ?? (profile.role === "admin" ? "Soltegra" : "Cliente");
+
+        // Email del cliente propietario (via auth.admin)
+        let clientEmail = "";
+        if (req.created_by) {
+          const adminClient = createSupabaseAdminClient();
+          const { data: authUser } = await adminClient.auth.admin.getUserById(req.created_by);
+          clientEmail = authUser?.user?.email ?? "";
+        }
+
+        await sendNuevoMensaje({
+          authorRole: profile.role as "admin" | "client",
+          authorName,
+          messageBody: body.trim(),
+          referenceCode: req.reference_code ?? requestId,
+          propertyAddress: req.property_address ?? "",
+          requestId,
+          clientEmail,
+        });
+      }
+    } catch {
+      // El fallo del email nunca bloquea el envío del mensaje
     }
 
     return NextResponse.json({ ok: true, id: data.id, createdAt: data.created_at });

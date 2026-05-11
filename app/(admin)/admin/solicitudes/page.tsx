@@ -5,7 +5,7 @@ import { getActiveServices } from "@/lib/services";
 import { StatusBadge } from "@/components/client/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { ArrowRight, AlertTriangle, CheckCircle2, CircleDashed } from "lucide-react";
+import { ArrowRight, AlertTriangle, CheckCircle2, CircleDashed, MessageSquare } from "lucide-react";
 
 const STATUSES = [
   { value: "", label: "Todas" },
@@ -39,6 +39,18 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
   if (selectedService) query = query.eq("service_type_id", selectedService.id);
 
   const { data: requests } = await query;
+
+  // IDs de solicitudes que tienen al menos un mensaje de cliente (para mostrar indicador)
+  const requestIds = (requests ?? []).map((r) => r.id);
+  let clientMessageIds = new Set<string>();
+  if (requestIds.length > 0) {
+    const { data: msgs } = await supabase
+      .from("request_messages")
+      .select("request_id")
+      .in("request_id", requestIds)
+      .eq("author_role", "client");
+    clientMessageIds = new Set((msgs ?? []).map((m) => m.request_id));
+  }
 
   function buildHref(part: { status?: string; service?: string }): string {
     const params = new URLSearchParams();
@@ -112,6 +124,7 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
               <th className="px-4 py-3 text-left font-medium">Estado</th>
               <th className="px-4 py-3 text-left font-medium">Pago</th>
               <th className="px-4 py-3 text-left font-medium">Fecha</th>
+              <th className="px-4 py-3 text-center font-medium" title="Mensajes del cliente">💬</th>
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
@@ -153,6 +166,11 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
                     <div className="text-[10px] font-semibold text-red-600">
                       Límite: {format(new Date(r.client_deadline), "dd/MM/yy")}
                     </div>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-center">
+                  {clientMessageIds.has(r.id) && (
+                    <MessageSquare className="inline h-4 w-4 text-blue-500" title="Tiene mensajes del cliente" />
                   )}
                 </td>
                 <td className="px-4 py-3">

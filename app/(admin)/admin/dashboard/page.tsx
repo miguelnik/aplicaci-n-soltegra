@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/client/StatusBadge";
 import { format } from "date-fns";
+import { MessageSquare } from "lucide-react";
 
 export default async function AdminDashboardPage() {
   await requireAdmin();
@@ -19,6 +20,13 @@ export default async function AdminDashboardPage() {
   const inReview = counts?.filter((r) => r.status === "in_review").length ?? 0;
   const inProgress = counts?.filter((r) => r.status === "in_progress").length ?? 0;
   const delivered = counts?.filter((r) => r.status === "delivered").length ?? 0;
+
+  // Solicitudes con mensajes de clientes (para el badge de notificación)
+  const { data: msgRows } = await supabase
+    .from("request_messages")
+    .select("request_id")
+    .eq("author_role", "client");
+  const requestsWithClientMessages = new Set((msgRows ?? []).map((m) => m.request_id));
 
   // Solicitudes recientes
   const { data: recent } = await supabase
@@ -38,23 +46,41 @@ export default async function AdminDashboardPage() {
       {/* Métricas */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Nuevas", value: submitted, color: "text-blue-600" },
-          { label: "En revisión", value: inReview, color: "text-yellow-600" },
-          { label: "En redacción", value: inProgress, color: "text-orange-600" },
-          { label: "Entregados", value: delivered, color: "text-green-600" },
+          { label: "Nuevas", value: submitted, color: "text-blue-600", href: "/admin/solicitudes?status=submitted" },
+          { label: "En revisión", value: inReview, color: "text-yellow-600", href: "/admin/solicitudes?status=in_review" },
+          { label: "En redacción", value: inProgress, color: "text-orange-600", href: "/admin/solicitudes?status=in_progress" },
+          { label: "Entregados", value: delivered, color: "text-green-600", href: "/admin/solicitudes?status=delivered" },
         ].map((stat) => (
-          <Card key={stat.label}>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.label}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
-            </CardContent>
-          </Card>
+          <Link key={stat.label} href={stat.href}>
+            <Card className="cursor-pointer transition-shadow hover:shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {stat.label}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className={`text-3xl font-bold ${stat.color}`}>{stat.value}</p>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
+
+      {/* Banner de mensajes de clientes pendientes */}
+      {requestsWithClientMessages.size > 0 && (
+        <Link href="/admin/solicitudes" className="block">
+          <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 hover:bg-blue-100 transition-colors">
+            <MessageSquare className="h-5 w-5 shrink-0 text-blue-600" />
+            <span>
+              <strong>{requestsWithClientMessages.size}</strong>{" "}
+              {requestsWithClientMessages.size === 1
+                ? "solicitud tiene mensajes del cliente"
+                : "solicitudes tienen mensajes de clientes"}
+              . Haz clic para revisar.
+            </span>
+          </div>
+        </Link>
+      )}
 
       {/* Solicitudes recientes */}
       <div>
