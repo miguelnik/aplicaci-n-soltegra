@@ -33,13 +33,12 @@ export default async function ClientDashboardPage({ searchParams }: Props) {
     .from("certificate_requests")
     .select("id, status, property_address, reference_code, estimated_delivery_date, created_at, certificate_pdf_path, service_types(name)")
     .eq("organization_id", orgId)
-    .not("status", "eq", "cancelled")
     .order("created_at", { ascending: false });
 
   const requests = allRequests ?? [];
 
   const counts = {
-    total: requests.length,
+    total: requests.filter((r) => r.status !== "cancelled").length,
     active: requests.filter((r) => !["draft", "delivered", "cancelled"].includes(r.status)).length,
     delivered: requests.filter((r) => r.status === "delivered").length,
     draft: requests.filter((r) => r.status === "draft").length,
@@ -52,6 +51,9 @@ export default async function ClientDashboardPage({ searchParams }: Props) {
     } else {
       filtered = filtered.filter((r) => r.status === filterStatus);
     }
+  } else {
+    // Por defecto ocultar canceladas (para no asustar al usuario), solo se ven con filtro explícito
+    filtered = filtered.filter((r) => r.status !== "cancelled");
   }
   if (searchQuery) {
     const q = searchQuery.toLowerCase();

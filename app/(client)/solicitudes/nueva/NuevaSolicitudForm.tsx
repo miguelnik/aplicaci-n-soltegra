@@ -116,6 +116,12 @@ export function NuevaSolicitudForm({
     notifyAdminOnSubmit(requestId.current).catch(console.error);
     setIsDirty(false);
     setSubmitted(true);
+    // Restaurar pushState ANTES de navegar — si no, el interceptor lo bloquearía
+    // porque los cambios de estado React aún no se han propagado al effect
+    if (originalPushState.current) {
+      window.history.pushState = originalPushState.current;
+      originalPushState.current = null;
+    }
     toast.success("Solicitud enviada correctamente");
     router.push("/dashboard");
   }

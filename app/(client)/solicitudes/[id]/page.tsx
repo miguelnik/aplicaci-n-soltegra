@@ -202,8 +202,8 @@ export default async function SolicitudDetallePage({ params }: Props) {
         />
       )}
 
-      {/* Timeline */}
-      {!isDraft && (
+      {/* Timeline — oculto para canceladas (ya hay banner) y borradores */}
+      {!isDraft && !isCancelled && (
         <Card>
           <CardContent className="pb-4 pt-6">
             <StatusTimeline status={req.status} history={statusHistory} />

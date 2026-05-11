@@ -18,6 +18,7 @@ const FILTERS = [
   { value: "active", label: "En curso" },
   { value: "delivered", label: "Entregadas" },
   { value: "draft", label: "Borradores" },
+  { value: "cancelled", label: "Canceladas" },
 ];
 
 export default async function SolicitudesPage({ searchParams }: Props) {
@@ -29,7 +30,6 @@ export default async function SolicitudesPage({ searchParams }: Props) {
     .from("certificate_requests")
     .select("id, status, property_address, reference_code, estimated_delivery_date, created_at, certificate_pdf_path, service_types(name)")
     .eq("organization_id", profile.organization_id!)
-    .not("status", "eq", "cancelled")
     .order("created_at", { ascending: false });
 
   let requests = allRequests ?? [];
@@ -40,6 +40,9 @@ export default async function SolicitudesPage({ searchParams }: Props) {
     } else {
       requests = requests.filter((r) => r.status === filterStatus);
     }
+  } else {
+    // "Todas" excluye canceladas por defecto (accesibles con el filtro explícito)
+    requests = requests.filter((r) => r.status !== "cancelled");
   }
 
   if (searchQuery) {

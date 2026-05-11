@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const STATUSES = [
+  { value: "draft", label: "Borrador" },
   { value: "submitted", label: "Nueva" },
   { value: "in_review", label: "En revisión" },
   { value: "in_progress", label: "En redacción" },
