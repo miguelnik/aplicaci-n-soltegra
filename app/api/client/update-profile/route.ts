@@ -4,7 +4,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: NextRequest) {
   try {
-    const { fullName, phone, orgName, orgCif, orgEmail, orgPhone } =
+    const { fullName, phone, orgName, orgCif, orgEmail, orgPhone, orgAddress } =
       (await request.json()) as {
         fullName: string;
         phone: string;
@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
         orgCif: string;
         orgEmail: string;
         orgPhone: string;
+        orgAddress: string;
       };
 
     const supabase = await createSupabaseServerClient();
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
           cif: orgCif.trim() || null,
           contact_email: orgEmail.trim() || null,
           contact_phone: orgPhone.trim() || null,
+          billing_address: orgAddress.trim() || null,
           updated_at: new Date().toISOString(),
         })
         .eq("id", profile.organization_id);

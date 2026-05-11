@@ -19,7 +19,7 @@ export default async function PerfilPage() {
     const adminClient = createSupabaseAdminClient();
     const { data: org } = await adminClient
       .from("organizations")
-      .select("name, cif, contact_email, contact_phone")
+      .select("name, cif, contact_email, contact_phone, billing_address")
       .eq("id", profile.organization_id)
       .single();
 
@@ -29,6 +29,7 @@ export default async function PerfilPage() {
         cif: org.cif ?? null,
         contactEmail: org.contact_email ?? null,
         contactPhone: org.contact_phone ?? null,
+        billingAddress: org.billing_address ?? null,
       };
     }
   }

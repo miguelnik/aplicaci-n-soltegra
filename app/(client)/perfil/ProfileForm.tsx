@@ -20,6 +20,7 @@ interface Props {
     cif: string | null;
     contactEmail: string | null;
     contactPhone: string | null;
+    billingAddress: string | null;
   } | null;
 }
 
@@ -30,6 +31,7 @@ export function ProfileForm({ profile, organization }: Props) {
   const [orgCif, setOrgCif] = useState(organization?.cif ?? "");
   const [orgEmail, setOrgEmail] = useState(organization?.contactEmail ?? "");
   const [orgPhone, setOrgPhone] = useState(organization?.contactPhone ?? "");
+  const [orgAddress, setOrgAddress] = useState(organization?.billingAddress ?? "");
   const [saving, setSaving] = useState(false);
   const router = useRouter();
 
@@ -46,6 +48,7 @@ export function ProfileForm({ profile, organization }: Props) {
           orgCif,
           orgEmail,
           orgPhone,
+          orgAddress,
         }),
       });
       const result = await res.json();
@@ -162,6 +165,15 @@ export function ProfileForm({ profile, organization }: Props) {
                   onChange={(e) => setOrgEmail(e.target.value)}
                   placeholder="facturacion@miempresa.com"
                   type="email"
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="orgAddress">Dirección de facturación</Label>
+                <Input
+                  id="orgAddress"
+                  value={orgAddress}
+                  onChange={(e) => setOrgAddress(e.target.value)}
+                  placeholder="Calle Mayor 1, 2ºA, 18001 Granada"
                 />
               </div>
             </div>
