@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { buildZodFromSchema } from "@/lib/form-schema/validate";
@@ -40,6 +41,10 @@ interface Props {
   organizationId: string;
   onSubmit?: (data: FormData) => Promise<void>;
   onSaveDraft?: (data: FormData) => Promise<void>;
+  /** Called whenever a field value changes — receives current form values */
+  onFieldChange?: (data: FormData) => void;
+  /** Called before a file upload starts; return false to abort */
+  onBeforeFileUpload?: () => Promise<boolean>;
   submitLabel?: string;
   disabled?: boolean;
 }
@@ -51,6 +56,8 @@ export function FormRenderer({
   organizationId,
   onSubmit = async () => {},
   onSaveDraft,
+  onFieldChange,
+  onBeforeFileUpload,
   submitLabel = "Enviar solicitud",
   disabled = false,
 }: Props) {
@@ -59,6 +66,15 @@ export function FormRenderer({
     resolver: zodResolver(zodSchema),
     defaultValues: defaultValues ?? {},
   });
+
+  // Notify parent whenever any field changes
+  useEffect(() => {
+    if (!onFieldChange) return;
+    const subscription = methods.watch((values) => {
+      onFieldChange(values as FormData);
+    });
+    return () => subscription.unsubscribe();
+  }, [methods, onFieldChange]);
 
   const handleDraft = async () => {
     if (!onSaveDraft) return;
@@ -104,6 +120,7 @@ export function FormRenderer({
                     requestId={requestId}
                     organizationId={organizationId}
                     disabled={disabled}
+                    onBeforeUpload={onBeforeFileUpload}
                   />
                 ))}
               </div>

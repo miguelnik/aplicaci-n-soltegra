@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { requireClient } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -20,7 +20,6 @@ export default async function NuevaSolicitudFormPage({ params }: Props) {
 
   const supabase = await createSupabaseServerClient();
 
-  // Schema actual del formulario para este servicio
   const { data: schemaRow } = await supabase
     .from("form_schemas")
     .select("id, version, schema")
@@ -41,22 +40,8 @@ export default async function NuevaSolicitudFormPage({ params }: Props) {
     );
   }
 
-  // Crear el borrador inmediatamente para tener el ID y poder subir archivos
-  const { data: request, error } = await supabase
-    .from("certificate_requests")
-    .insert({
-      organization_id: profile.organization_id!,
-      created_by: profile.id,
-      form_schema_id: schemaRow.id,
-      service_type_id: service.id,
-      form_data: {},
-      status: "draft",
-    })
-    .select("id")
-    .single();
-
-  if (error || !request) redirect("/solicitudes");
-
+  // NO creamos el borrador aquí. Se crea en el cliente solo cuando el usuario
+  // hace clic en "Guardar borrador" o "Enviar solicitud" (o sube un archivo).
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
@@ -74,8 +59,10 @@ export default async function NuevaSolicitudFormPage({ params }: Props) {
       </div>
       <NuevaSolicitudForm
         schema={schemaRow.schema as unknown as FormSchema}
-        requestId={request.id}
+        schemaId={schemaRow.id}
+        serviceId={service.id}
         organizationId={profile.organization_id!}
+        profileId={profile.id}
       />
     </div>
   );

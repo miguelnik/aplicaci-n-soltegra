@@ -26,9 +26,11 @@ interface Props {
   requestId: string;
   organizationId: string;
   disabled?: boolean;
+  /** Called before upload starts; return false to abort (e.g. to ensure draft exists) */
+  onBeforeUpload?: () => Promise<boolean>;
 }
 
-export function FileUploader({ fileBlock, requestId, organizationId, disabled }: Props) {
+export function FileUploader({ fileBlock, requestId, organizationId, disabled, onBeforeUpload }: Props) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
 
@@ -42,6 +44,12 @@ export function FileUploader({ fileBlock, requestId, organizationId, disabled }:
       if (toUpload.length === 0) {
         toast.error(`Máximo ${fileBlock.maxCount} archivos`);
         return;
+      }
+
+      // Ensure the draft request exists in DB before uploading files
+      if (onBeforeUpload) {
+        const ok = await onBeforeUpload();
+        if (!ok) return;
       }
 
       setUploading(true);
@@ -106,7 +114,7 @@ export function FileUploader({ fileBlock, requestId, organizationId, disabled }:
       setFiles((prev) => [...prev, ...newUploaded]);
       setUploading(false);
     },
-    [files, fileBlock, requestId, organizationId, disabled],
+    [files, fileBlock, requestId, organizationId, disabled, onBeforeUpload],
   );
 
   const removeFile = async (file: UploadedFile) => {
