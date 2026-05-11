@@ -9,8 +9,8 @@ import { FormRenderer } from "@/components/forms/FormRenderer";
 import type { FormSchema } from "@/lib/form-schema/types";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { ArrowLeft, Download, FileText, CheckCircle2, Clock, AlertTriangle } from "lucide-react";
-import { DeleteDraftButton } from "./DeleteDraftButton";
+import { ArrowLeft, Download, FileText, CheckCircle2, Clock, AlertTriangle, XCircle } from "lucide-react";
+import { DeleteRequestButton } from "./DeleteRequestButton";
 import { MessageThread } from "@/components/messages/MessageThread";
 import { getRequestMessages } from "@/lib/messages";
 
@@ -141,6 +141,9 @@ export default async function SolicitudDetallePage({ params }: Props) {
   const schema = (req.form_schemas as unknown as { schema: FormSchema } | null)?.schema;
   const isDelivered = req.status === "delivered";
   const isDraft = req.status === "draft";
+  const isCancelled = req.status === "cancelled";
+  // El cliente puede borrar: borradores, enviadas y canceladas
+  const isDeletable = ["draft", "submitted", "cancelled"].includes(req.status);
   const statusHistory = (req.status_history ?? []) as HistoryEntry[];
   const messages = await getRequestMessages(id);
   // El cliente solo puede escribir mensajes en solicitudes activas (no draft ni cancelled)
@@ -169,6 +172,23 @@ export default async function SolicitudDetallePage({ params }: Props) {
           Solicitud creada el {format(new Date(req.created_at), "d 'de' MMMM 'de' yyyy", { locale: es })}
         </p>
       </div>
+
+      {/* Banner de cancelación */}
+      {isCancelled && (
+        <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/8 px-4 py-4">
+          <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
+          <div className="space-y-1">
+            <p className="font-semibold text-destructive">Solicitud cancelada</p>
+            <p className="text-sm text-muted-foreground">
+              Esta solicitud ha sido cancelada. Si crees que es un error o tienes alguna duda,
+              contacta con el equipo de Soltegra.
+            </p>
+            <div className="pt-1">
+              <DeleteRequestButton requestId={req.id} isDraft={false} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Conversación con el equipo Soltegra */}
       {!isDraft && (
@@ -282,6 +302,7 @@ export default async function SolicitudDetallePage({ params }: Props) {
         </div>
       )}
 
+      {/* Borrador: continuar o eliminar */}
       {isDraft && (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-6 text-center text-sm text-muted-foreground">
@@ -291,9 +312,16 @@ export default async function SolicitudDetallePage({ params }: Props) {
                 Continuar y enviarla
               </Link>
             </p>
-            <DeleteDraftButton requestId={req.id} />
+            <DeleteRequestButton requestId={req.id} isDraft />
           </CardContent>
         </Card>
+      )}
+
+      {/* Solicitud enviada (no cancelada, no entregada): opción de eliminar */}
+      {isDeletable && !isDraft && !isCancelled && (
+        <div className="flex justify-end border-t pt-4">
+          <DeleteRequestButton requestId={req.id} isDraft={false} />
+        </div>
       )}
     </div>
   );
