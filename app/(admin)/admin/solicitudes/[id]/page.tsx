@@ -19,7 +19,6 @@ import {
   Lock,
   Eye,
   Trash2,
-  ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -156,15 +155,7 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-2xl font-bold">{req.property_address ?? "Sin dirección"}</h1>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <Link href={`/admin/solicitudes/${id}/expediente`}>
-                <ClipboardList className="mr-1.5 h-4 w-4" />
-                Expediente
-              </Link>
-            </Button>
-            <StatusBadge status={req.status} />
-          </div>
+          <StatusBadge status={req.status} />
         </div>
         <p className="text-sm text-muted-foreground">
           {(req.organizations as unknown as { name: string } | null)?.name}
@@ -179,6 +170,21 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
           {" "}· Creada el{" "}
           {format(new Date(req.created_at), "d 'de' MMMM 'de' yyyy", { locale: es })}
         </p>
+      </div>
+
+      {/* Navegación de secciones */}
+      <div className="flex gap-1 border-b">
+        <span
+          className="rounded-t-md border border-b-0 border-border bg-background px-4 py-2 text-sm font-medium"
+        >
+          Solicitud
+        </span>
+        <Link
+          href={`/admin/solicitudes/${id}/expediente`}
+          className="rounded-t-md px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Expediente
+        </Link>
       </div>
 
       {/* Fecha límite del cliente */}

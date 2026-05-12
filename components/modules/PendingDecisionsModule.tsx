@@ -158,8 +158,6 @@ function DecisionCard({
 
 export function PendingDecisionsModule({ module: mod, data, currentRole }: Props) {
   const { decisions, req } = data;
-  if (!decisions || decisions.length === 0) return null;
-
   const canRespond = currentRole === "client";
 
   return (
@@ -168,15 +166,20 @@ export function PendingDecisionsModule({ module: mod, data, currentRole }: Props
         <h2 id="decisions-heading" className="text-lg font-semibold">
           {mod.label}
         </h2>
-        {decisions.some((d) => d.status === "pending") && (
+        {decisions && decisions.some((d) => d.status === "pending") && (
           <Badge variant="default" className="bg-orange-500 hover:bg-orange-600">
-            {decisions.filter((d) => d.status === "pending").length} pendiente
-            {decisions.filter((d) => d.status === "pending").length > 1 ? "s" : ""}
+            {(decisions ?? []).filter((d) => d.status === "pending").length} pendiente
+            {(decisions ?? []).filter((d) => d.status === "pending").length > 1 ? "s" : ""}
           </Badge>
         )}
       </div>
+      {(!decisions || decisions.length === 0) && (
+        <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+          No hay decisiones pendientes en este momento.
+        </p>
+      )}
       <ul className="space-y-3">
-        {decisions.map((d) => (
+        {(decisions ?? []).map((d) => (
           <DecisionCard
             key={d.id}
             decision={d}

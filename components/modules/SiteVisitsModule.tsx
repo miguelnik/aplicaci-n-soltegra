@@ -13,11 +13,9 @@ interface Props {
 
 export function SiteVisitsModule({ module: mod, data }: Props) {
   const { siteVisits } = data;
-  if (!siteVisits || siteVisits.length === 0) return null;
-
-  const sorted = [...siteVisits].sort(
-    (a, b) => new Date(b.visited_at).getTime() - new Date(a.visited_at).getTime(),
-  );
+  const sorted = siteVisits && siteVisits.length > 0
+    ? [...siteVisits].sort((a, b) => new Date(b.visited_at).getTime() - new Date(a.visited_at).getTime())
+    : [];
 
   return (
     <section aria-labelledby="site-visits-heading" className="space-y-3">
@@ -25,6 +23,12 @@ export function SiteVisitsModule({ module: mod, data }: Props) {
         <HardHat className="h-5 w-5 text-muted-foreground" />
         {mod.label}
       </h2>
+
+      {sorted.length === 0 && (
+        <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+          Todavía no se han registrado visitas de obra.
+        </p>
+      )}
 
       <ol className="space-y-3">
         {sorted.map((visit) => (

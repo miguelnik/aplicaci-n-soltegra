@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  ArrowLeft,
   Trash2,
   CheckCircle2,
   Eye,
@@ -200,19 +199,31 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
       {/* Cabecera */}
       <div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Link href={`/admin/solicitudes/${requestId}`} className="flex items-center gap-1 hover:text-primary">
-            <ArrowLeft className="h-3.5 w-3.5" />
-            {req.reference_code ?? requestId.slice(0, 8)}
+          <Link href="/admin/solicitudes" className="hover:text-primary">
+            Solicitudes
           </Link>
           <span>/</span>
-          <span>Expediente</span>
+          <span className="font-mono">{req.reference_code ?? requestId.slice(0, 8)}</span>
         </div>
         <h1 className="text-2xl font-bold">
-          Expediente: {req.property_address ?? "Sin dirección"}
+          {req.property_address ?? "Sin dirección"}
         </h1>
       </div>
 
-      {/* Pestanas */}
+      {/* Navegación de secciones — igual que en la página de solicitud */}
+      <div className="flex gap-1 border-b">
+        <Link
+          href={`/admin/solicitudes/${requestId}`}
+          className="rounded-t-md px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Solicitud
+        </Link>
+        <span className="rounded-t-md border border-b-0 border-border bg-background px-4 py-2 text-sm font-medium">
+          Expediente
+        </span>
+      </div>
+
+      {/* Sub-pestanas del expediente */}
       <div className="flex flex-wrap gap-1 border-b pb-0">
         {TABS.map((t) => (
           <Link

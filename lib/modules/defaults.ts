@@ -183,10 +183,15 @@ export const GENERIC_SERVICE_DEFAULT: ServiceModuleConfig = [
 
 /**
  * Devuelve la configuración de módulos efectiva para un tipo de servicio.
- * Prioridad:
- *   1. module_config configurado por el admin en la BD (si existe y tiene items)
- *   2. Fallback por slug (certificado-energetico → experiencia actual exacta)
- *   3. Fallback genérico (para cualquier otro servicio nuevo)
+ *
+ * Estrategia de merge:
+ *   - Si no hay config guardada en BD: usa el default completo (base).
+ *   - Si hay config guardada: los módulos guardados se respetan tal cual
+ *     (el admin los configuró así intencionadamente), PERO los módulos que
+ *     existan en el default y NO en la config guardada se añaden con los
+ *     valores por defecto. Esto garantiza que los módulos nuevos del catálogo
+ *     aparecen siempre, incluso en servicios con configuración de versiones
+ *     anteriores del sistema.
  *
  * El resultado siempre viene ordenado por `order` ASC.
  */
@@ -194,13 +199,30 @@ export function getEffectiveModules(
   serviceSlug: string,
   moduleConfig: ServiceModuleConfig | null | undefined,
 ): ServiceModuleConfig {
-  if (moduleConfig && moduleConfig.length > 0) {
-    return [...moduleConfig].sort((a, b) => a.order - b.order);
+  // Base de módulos disponibles para este tipo de servicio
+  const base =
+    serviceSlug === "certificado-energetico"
+      ? CERTIFICADO_ENERGETICO_DEFAULT
+      : GENERIC_SERVICE_DEFAULT;
+
+  // Sin config guardada → usar el base directamente
+  if (!moduleConfig || moduleConfig.length === 0) {
+    return [...base].sort((a, b) => a.order - b.order);
   }
-  if (serviceSlug === "certificado-energetico") {
-    return CERTIFICADO_ENERGETICO_DEFAULT;
+
+  // Config guardada existe → merge:
+  // Empezamos con los módulos guardados (respetan configuración del admin)
+  // y añadimos cualquier módulo del base que no esté en la lista guardada.
+  const savedKeys = new Set(moduleConfig.map((m) => m.key));
+  const result: ServiceModuleConfig = [...moduleConfig];
+
+  for (const baseMod of base) {
+    if (!savedKeys.has(baseMod.key)) {
+      result.push(baseMod);
+    }
   }
-  return GENERIC_SERVICE_DEFAULT;
+
+  return result.sort((a, b) => a.order - b.order);
 }
 
 /**

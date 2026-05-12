@@ -14,12 +14,13 @@ interface Props {
 
 export function MeetingMinutesModule({ module: mod, data }: Props) {
   const { meetingMinutes } = data;
-  if (!meetingMinutes || meetingMinutes.length === 0) return null;
-
-  const sorted = [...meetingMinutes].sort(
-    (a, b) =>
-      new Date(b.meeting_date).getTime() - new Date(a.meeting_date).getTime(),
-  );
+  const sorted =
+    meetingMinutes && meetingMinutes.length > 0
+      ? [...meetingMinutes].sort(
+          (a, b) =>
+            new Date(b.meeting_date).getTime() - new Date(a.meeting_date).getTime(),
+        )
+      : [];
 
   return (
     <section aria-labelledby="minutes-heading" className="space-y-3">
@@ -27,6 +28,12 @@ export function MeetingMinutesModule({ module: mod, data }: Props) {
         <FileText className="h-5 w-5 text-muted-foreground" />
         {mod.label}
       </h2>
+
+      {sorted.length === 0 && (
+        <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+          Todavía no hay actas registradas.
+        </p>
+      )}
 
       <ul className="space-y-4">
         {sorted.map((m) => (

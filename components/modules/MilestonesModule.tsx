@@ -40,15 +40,20 @@ const STATUS_CONFIG: Record<
 
 export function MilestonesModule({ module: mod, data }: Props) {
   const { milestones } = data;
-  if (!milestones || milestones.length === 0) return null;
-
-  const sorted = [...milestones].sort((a, b) => a.order - b.order);
+  const sorted = milestones && milestones.length > 0
+    ? [...milestones].sort((a, b) => a.order - b.order)
+    : [];
 
   return (
     <section aria-labelledby="milestones-heading" className="space-y-3">
       <h2 id="milestones-heading" className="text-lg font-semibold">
         {mod.label}
       </h2>
+      {sorted.length === 0 && (
+        <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+          Todavía no hay hitos definidos para este proyecto.
+        </p>
+      )}
       <ol className="relative border-l border-muted-foreground/20 pl-6 space-y-4">
         {sorted.map((m) => {
           const cfg = STATUS_CONFIG[m.status] ?? STATUS_CONFIG.pending;

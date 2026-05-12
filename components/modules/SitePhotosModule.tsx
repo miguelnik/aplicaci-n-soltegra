@@ -19,12 +19,13 @@ export function SitePhotosModule({ module: mod, data }: Props) {
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [lightboxCaption, setLightboxCaption] = useState<string | null>(null);
 
-  if (!photos || photos.length === 0) return null;
-
-  const sorted = [...photos].sort(
-    (a, b) =>
-      new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime(),
-  );
+  const sorted =
+    photos && photos.length > 0
+      ? [...photos].sort(
+          (a, b) =>
+            new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime(),
+        )
+      : [];
 
   function openLightbox(url: string, caption: string | null) {
     setLightbox(url);
@@ -44,44 +45,54 @@ export function SitePhotosModule({ module: mod, data }: Props) {
       >
         <ImageIcon className="h-5 w-5 text-muted-foreground" />
         {mod.label}
-        <span className="text-sm font-normal text-muted-foreground">
-          ({photos.length})
-        </span>
+        {sorted.length > 0 && (
+          <span className="text-sm font-normal text-muted-foreground">
+            ({sorted.length})
+          </span>
+        )}
       </h2>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-        {sorted.map((photo) => (
-          <button
-            key={photo.id}
-            type="button"
-            className="group relative aspect-square overflow-hidden rounded-lg border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            onClick={() => openLightbox(photo.signedUrl ?? "", photo.caption)}
-            disabled={!photo.signedUrl}
-          >
-            {photo.signedUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={photo.signedUrl}
-                alt={photo.caption ?? photo.original_filename}
-                className="h-full w-full object-cover transition-transform group-hover:scale-105"
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center">
-                <ImageIcon className="h-8 w-8 text-muted-foreground/40" />
-              </div>
-            )}
-            {/* Overlay con fecha */}
-            {photo.taken_at && (
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1 opacity-0 transition-opacity group-hover:opacity-100">
-                <p className="flex items-center gap-1 text-[10px] text-white">
-                  <Calendar className="h-2.5 w-2.5" />
-                  {format(parseISO(photo.taken_at), "d MMM yyyy", { locale: es })}
-                </p>
-              </div>
-            )}
-          </button>
-        ))}
-      </div>
+      {sorted.length === 0 && (
+        <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+          Todavía no hay fotos de obra publicadas.
+        </p>
+      )}
+
+      {sorted.length > 0 && (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+          {sorted.map((photo) => (
+            <button
+              key={photo.id}
+              type="button"
+              className="group relative aspect-square overflow-hidden rounded-lg border bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              onClick={() => openLightbox(photo.signedUrl ?? "", photo.caption)}
+              disabled={!photo.signedUrl}
+            >
+              {photo.signedUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photo.signedUrl}
+                  alt={photo.caption ?? photo.original_filename}
+                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center">
+                  <ImageIcon className="h-8 w-8 text-muted-foreground/40" />
+                </div>
+              )}
+              {/* Overlay con fecha */}
+              {photo.taken_at && (
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  <p className="flex items-center gap-1 text-[10px] text-white">
+                    <Calendar className="h-2.5 w-2.5" />
+                    {format(parseISO(photo.taken_at), "d MMM yyyy", { locale: es })}
+                  </p>
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Lightbox */}
       {lightbox && (

@@ -82,20 +82,24 @@ export function ConstructionDashboardModule({ module: mod, data }: Props) {
     ? totalCost - budget.initial_budget
     : null;
 
-  // Si no hay datos para mostrar, no renderizar
+  // Si no hay datos aún, mostrar estado vacío
   const hasData =
     totalMilestones > 0 ||
-    incidents?.length ||
-    siteVisits?.length ||
+    (incidents && incidents.length > 0) ||
+    (siteVisits && siteVisits.length > 0) ||
     budget?.initial_budget != null;
-
-  if (!hasData) return null;
 
   return (
     <section aria-labelledby="dashboard-heading" className="space-y-4">
       <h2 id="dashboard-heading" className="text-lg font-semibold">
         {mod.label}
       </h2>
+
+      {!hasData && (
+        <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+          El cuadro de mando se rellenará automáticamente cuando se registren hitos, visitas o presupuesto.
+        </p>
+      )}
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
