@@ -76,6 +76,49 @@ export default async function SolicitudDetallePage({ params }: Props) {
     }),
   );
 
+  // ── 4b. Datos de módulos de proyecto / obra (RLS filtra por visibilidad) ─
+  const [
+    { data: rawMilestones },
+    { data: rawDecisions },
+    { data: rawIncidents },
+    { data: rawRisks },
+    { data: rawSiteVisits },
+    { data: rawMeetingMinutes },
+    { data: budget },
+    { data: costItems },
+    { data: rawPhotos },
+  ] = await Promise.all([
+    supabase.from("expedition_milestones").select("*").eq("request_id", id).order("order"),
+    supabase.from("expedition_decisions").select("*").eq("request_id", id).order("created_at"),
+    supabase.from("expedition_incidents").select("*").eq("request_id", id).order("created_at", { ascending: false }),
+    supabase.from("expedition_risks").select("*").eq("request_id", id).order("created_at"),
+    supabase.from("expedition_site_visits").select("*").eq("request_id", id).order("visited_at", { ascending: false }),
+    supabase.from("expedition_meeting_minutes").select("*").eq("request_id", id).order("meeting_date", { ascending: false }),
+    supabase.from("expedition_budget").select("*").eq("request_id", id).maybeSingle(),
+    supabase.from("expedition_cost_items").select("*").eq("request_id", id).order("created_at"),
+    supabase.from("expedition_photos").select("*").eq("request_id", id).order("uploaded_at", { ascending: false }),
+  ]);
+
+  // Generar signed URLs para fotos y actas con adjuntos
+  const photos = await Promise.all(
+    (rawPhotos ?? []).map(async (p) => {
+      const { data } = await supabase.storage
+        .from("expedition-photos")
+        .createSignedUrl(p.storage_path, 900);
+      return { ...p, signedUrl: data?.signedUrl ?? null };
+    }),
+  );
+
+  const meetingMinutes = await Promise.all(
+    (rawMeetingMinutes ?? []).map(async (m) => {
+      if (!m.storage_path) return { ...m, signedUrl: null };
+      const { data } = await supabase.storage
+        .from("expedition-docs")
+        .createSignedUrl(m.storage_path, 900);
+      return { ...m, signedUrl: data?.signedUrl ?? null };
+    }),
+  );
+
   // ── 5. Configuración de módulos para este tipo de servicio ───────────────
   const serviceSlug =
     (req.service_types as unknown as { slug: string } | null)?.slug ?? "";
@@ -119,6 +162,16 @@ export default async function SolicitudDetallePage({ params }: Props) {
     filesWithUrls,
     messages,
     expeditionDocuments,
+    // Módulos de proyecto y obra
+    milestones:     (rawMilestones ?? []) as import("@/lib/modules/expedition-types").ExpeditionMilestone[],
+    decisions:      (rawDecisions ?? []) as import("@/lib/modules/expedition-types").ExpeditionDecision[],
+    incidents:      (rawIncidents ?? []) as import("@/lib/modules/expedition-types").ExpeditionIncident[],
+    risks:          (rawRisks ?? []) as import("@/lib/modules/expedition-types").ExpeditionRisk[],
+    siteVisits:     (rawSiteVisits ?? []) as import("@/lib/modules/expedition-types").ExpeditionSiteVisit[],
+    meetingMinutes: meetingMinutes as import("@/lib/modules/expedition-types").ExpeditionMeetingMinute[],
+    photos:         photos as import("@/lib/modules/expedition-types").ExpeditionPhoto[],
+    budget:         (budget ?? null) as import("@/lib/modules/expedition-types").ExpeditionBudget | null,
+    costItems:      (costItems ?? []) as import("@/lib/modules/expedition-types").ExpeditionCostItem[],
   };
 
   return (

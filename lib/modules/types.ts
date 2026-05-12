@@ -116,4 +116,15 @@ export interface ModulePageData {
   messages: import("@/components/messages/MessageThread").ThreadMessage[];
   // Documentos del expediente (expedition_documents)
   expeditionDocuments: ExpeditionDocument[];
+
+  // ── Módulos de gestión de proyecto y dirección de obra ────────────────────
+  milestones: import("@/lib/modules/expedition-types").ExpeditionMilestone[];
+  decisions: import("@/lib/modules/expedition-types").ExpeditionDecision[];
+  incidents: import("@/lib/modules/expedition-types").ExpeditionIncident[];
+  risks: import("@/lib/modules/expedition-types").ExpeditionRisk[];
+  siteVisits: import("@/lib/modules/expedition-types").ExpeditionSiteVisit[];
+  meetingMinutes: import("@/lib/modules/expedition-types").ExpeditionMeetingMinute[];
+  photos: import("@/lib/modules/expedition-types").ExpeditionPhoto[];
+  budget: import("@/lib/modules/expedition-types").ExpeditionBudget | null;
+  costItems: import("@/lib/modules/expedition-types").ExpeditionCostItem[];
 }

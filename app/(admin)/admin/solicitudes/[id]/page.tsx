@@ -19,6 +19,7 @@ import {
   Lock,
   Eye,
   Trash2,
+  ClipboardList,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -153,9 +154,17 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
           <span>/</span>
           <span className="font-mono">{req.reference_code ?? id.slice(0, 8)}</span>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-2xl font-bold">{req.property_address ?? "Sin dirección"}</h1>
-          <StatusBadge status={req.status} />
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/admin/solicitudes/${id}/expediente`}>
+                <ClipboardList className="mr-1.5 h-4 w-4" />
+                Expediente
+              </Link>
+            </Button>
+            <StatusBadge status={req.status} />
+          </div>
         </div>
         <p className="text-sm text-muted-foreground">
           {(req.organizations as unknown as { name: string } | null)?.name}

@@ -83,7 +83,7 @@ export const MODULE_CATALOG: ModuleMeta[] = [
     defaultLabel: "Hitos del proyecto",
     description: "Hitos y entregables programados del proyecto con fecha y estado.",
     defaultVisibility: "both",
-    implemented: false,
+    implemented: true,
     group: "documentation",
   },
   {
@@ -91,7 +91,7 @@ export const MODULE_CATALOG: ModuleMeta[] = [
     defaultLabel: "Decisiones pendientes",
     description: "Decisiones que requieren respuesta o acción del cliente.",
     defaultVisibility: "both",
-    implemented: false,
+    implemented: true,
     group: "documentation",
   },
   {
@@ -99,7 +99,7 @@ export const MODULE_CATALOG: ModuleMeta[] = [
     defaultLabel: "Incidencias",
     description: "Registro de incidencias o problemas detectados durante el proyecto.",
     defaultVisibility: "admin",
-    implemented: false,
+    implemented: true,
     group: "documentation",
   },
   {
@@ -107,7 +107,7 @@ export const MODULE_CATALOG: ModuleMeta[] = [
     defaultLabel: "Riesgos",
     description: "Mapa de riesgos identificados. Las entradas no publicadas son solo internas.",
     defaultVisibility: "admin",
-    implemented: false,
+    implemented: true,
     group: "documentation",
   },
   // ── Dirección de obra ─────────────────────────────────────────────────────
@@ -116,7 +116,7 @@ export const MODULE_CATALOG: ModuleMeta[] = [
     defaultLabel: "Cuadro de mando de obra",
     description: "Dashboard de avance de obra: plazo, coste, hitos y alertas.",
     defaultVisibility: "both",
-    implemented: false,
+    implemented: true,
     group: "obra",
   },
   {
@@ -124,7 +124,7 @@ export const MODULE_CATALOG: ModuleMeta[] = [
     defaultLabel: "Visitas de obra",
     description: "Registro de visitas realizadas a la obra con fecha, técnico y observaciones.",
     defaultVisibility: "both",
-    implemented: false,
+    implemented: true,
     group: "obra",
   },
   {
@@ -132,7 +132,7 @@ export const MODULE_CATALOG: ModuleMeta[] = [
     defaultLabel: "Fotos de obra",
     description: "Galería fotográfica del avance de obra organizada por fecha o fase.",
     defaultVisibility: "both",
-    implemented: false,
+    implemented: true,
     group: "obra",
   },
   {
@@ -140,7 +140,7 @@ export const MODULE_CATALOG: ModuleMeta[] = [
     defaultLabel: "Actas",
     description: "Actas de reuniones, visitas de obra y reuniones de coordinación.",
     defaultVisibility: "both",
-    implemented: false,
+    implemented: true,
     group: "obra",
   },
   {
@@ -148,7 +148,7 @@ export const MODULE_CATALOG: ModuleMeta[] = [
     defaultLabel: "Resumen económico",
     description: "Seguimiento de presupuesto, costes y variaciones de la obra.",
     defaultVisibility: "admin",
-    implemented: false,
+    implemented: true,
     group: "obra",
   },
 ];
