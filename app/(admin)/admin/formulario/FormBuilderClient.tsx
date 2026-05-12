@@ -20,6 +20,82 @@ const FIELD_TYPES: { value: FieldType; label: string }[] = [
   { value: "checkbox", label: "Casilla" },
 ];
 
+/**
+ * Presets de tipo de archivo para los bloques de upload.
+ * El admin elige uno y el sistema configura el array `accept` automáticamente.
+ */
+const FILE_PRESETS: {
+  value: string;
+  label: string;
+  accept: string[];
+  hint: string;
+}[] = [
+  {
+    value: "images",
+    label: "Imágenes",
+    accept: ["image/*"],
+    hint: "JPG, PNG, WEBP, GIF…",
+  },
+  {
+    value: "pdf",
+    label: "PDF",
+    accept: ["application/pdf"],
+    hint: "Solo archivos PDF",
+  },
+  {
+    value: "generic",
+    label: "Archivo genérico",
+    accept: [
+      "image/*",
+      "application/pdf",
+      ".dwg",
+      ".dxf",
+      ".doc",
+      ".docx",
+      ".xls",
+      ".xlsx",
+      ".zip",
+      ".rar",
+    ],
+    hint: "PDF, imágenes, DWG, DXF, Office, ZIP…",
+  },
+  {
+    value: "office",
+    label: "Documentos Office",
+    accept: [
+      "application/pdf",
+      ".doc",
+      ".docx",
+      ".xls",
+      ".xlsx",
+      ".ppt",
+      ".pptx",
+    ],
+    hint: "PDF, Word, Excel, PowerPoint",
+  },
+  {
+    value: "cad",
+    label: "Planos CAD",
+    accept: ["application/pdf", ".dwg", ".dxf"],
+    hint: "PDF, DWG, DXF",
+  },
+  {
+    value: "any",
+    label: "Cualquier tipo",
+    accept: ["*/*"],
+    hint: "Acepta cualquier archivo",
+  },
+];
+
+/** Dado un array accept, devuelve el preset que coincide (o "custom") */
+function detectPreset(accept: string[]): string {
+  const sorted = [...accept].sort().join(",");
+  for (const p of FILE_PRESETS) {
+    if ([...p.accept].sort().join(",") === sorted) return p.value;
+  }
+  return "custom";
+}
+
 interface Props {
   currentSchema: FormSchema;
   currentVersion: number;
@@ -93,9 +169,11 @@ export function FormBuilderClient({ currentSchema, currentVersion, serviceTypeId
         {
           key: `archivo_${Date.now()}`,
           label: "Nuevo archivo",
-          accept: ["image/*"],
+          // Preset por defecto: "Archivo genérico" (PDF, imágenes, CAD, Office…)
+          accept: FILE_PRESETS.find((p) => p.value === "generic")!.accept,
           required: false,
           multiple: false,
+          maxSizeMb: 20,
         },
       ],
     });
@@ -298,71 +376,129 @@ export function FormBuilderClient({ currentSchema, currentVersion, serviceTypeId
               ))}
 
               {/* Bloques de archivos */}
-              {(section.files ?? []).map((fb, fbIdx) => (
-                <div
-                  key={fb.key}
-                  className="grid gap-3 rounded-md border border-dashed bg-blue-50/30 p-3 sm:grid-cols-3"
-                >
-                  <div className="space-y-1">
-                    <Label className="text-xs">Etiqueta archivo</Label>
-                    <Input
-                      value={fb.label}
-                      onChange={(e) => updateFileBlock(sIdx, fbIdx, { label: e.target.value })}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Clave (key)</Label>
-                    <Input
-                      value={fb.key}
-                      onChange={(e) => updateFileBlock(sIdx, fbIdx, { key: e.target.value })}
-                      className="h-8 font-mono text-xs"
-                    />
-                  </div>
-                  <div className="flex items-end gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Máx. MB</Label>
-                      <Input
-                        type="number"
-                        value={fb.maxSizeMb ?? 10}
-                        onChange={(e) =>
-                          updateFileBlock(sIdx, fbIdx, { maxSizeMb: Number(e.target.value) })
-                        }
-                        className="h-8 w-20 text-sm"
-                      />
+              {(section.files ?? []).map((fb, fbIdx) => {
+                const currentPreset = detectPreset(fb.accept ?? []);
+                const presetHint =
+                  FILE_PRESETS.find((p) => p.value === currentPreset)?.hint ?? "";
+
+                return (
+                  <div
+                    key={fb.key}
+                    className="space-y-3 rounded-md border border-dashed bg-blue-50/30 p-3"
+                  >
+                    {/* Fila 1: etiqueta + clave + eliminar */}
+                    <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Etiqueta del campo</Label>
+                        <Input
+                          value={fb.label}
+                          onChange={(e) =>
+                            updateFileBlock(sIdx, fbIdx, { label: e.target.value })
+                          }
+                          className="h-8 text-sm"
+                          placeholder="Ej: Planos de planta"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Clave (key)</Label>
+                        <Input
+                          value={fb.key}
+                          onChange={(e) =>
+                            updateFileBlock(sIdx, fbIdx, { key: e.target.value })
+                          }
+                          className="h-8 font-mono text-xs"
+                        />
+                      </div>
+                      <div className="flex items-end pb-0.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => removeFileBlock(sIdx, fbIdx)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 pb-1">
-                      <input
-                        type="checkbox"
-                        checked={fb.required ?? false}
-                        onChange={(e) =>
-                          updateFileBlock(sIdx, fbIdx, { required: e.target.checked })
-                        }
-                        className="h-3.5 w-3.5 accent-primary"
-                      />
-                      <Label className="cursor-pointer text-xs">Obligatorio</Label>
-                      <input
-                        type="checkbox"
-                        checked={fb.multiple ?? false}
-                        onChange={(e) =>
-                          updateFileBlock(sIdx, fbIdx, { multiple: e.target.checked })
-                        }
-                        className="h-3.5 w-3.5 accent-primary"
-                      />
-                      <Label className="cursor-pointer text-xs">Múltiple</Label>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => removeFileBlock(sIdx, fbIdx)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                      </Button>
+
+                    {/* Fila 2: tipo de archivo + opciones */}
+                    <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]">
+                      {/* Selector de tipo de archivo */}
+                      <div className="space-y-1">
+                        <Label className="text-xs">Tipo de archivo</Label>
+                        <select
+                          value={currentPreset}
+                          onChange={(e) => {
+                            const preset = FILE_PRESETS.find(
+                              (p) => p.value === e.target.value,
+                            );
+                            if (preset) {
+                              updateFileBlock(sIdx, fbIdx, { accept: preset.accept });
+                            }
+                          }}
+                          className="flex h-8 w-full rounded-md border border-input bg-background px-2 text-sm"
+                        >
+                          {FILE_PRESETS.map((p) => (
+                            <option key={p.value} value={p.value}>
+                              {p.label}
+                            </option>
+                          ))}
+                          {currentPreset === "custom" && (
+                            <option value="custom">Personalizado</option>
+                          )}
+                        </select>
+                        {presetHint && (
+                          <p className="text-[10px] text-muted-foreground">{presetHint}</p>
+                        )}
+                      </div>
+
+                      {/* Máx. MB */}
+                      <div className="space-y-1">
+                        <Label className="text-xs">Máx. MB</Label>
+                        <Input
+                          type="number"
+                          value={fb.maxSizeMb ?? 10}
+                          onChange={(e) =>
+                            updateFileBlock(sIdx, fbIdx, {
+                              maxSizeMb: Number(e.target.value),
+                            })
+                          }
+                          className="h-8 w-20 text-sm"
+                          min={1}
+                          max={500}
+                        />
+                      </div>
+
+                      {/* Obligatorio */}
+                      <div className="flex flex-col items-center justify-end gap-1 pb-1">
+                        <Label className="text-[10px] text-muted-foreground">Obligatorio</Label>
+                        <input
+                          type="checkbox"
+                          checked={fb.required ?? false}
+                          onChange={(e) =>
+                            updateFileBlock(sIdx, fbIdx, { required: e.target.checked })
+                          }
+                          className="h-4 w-4 accent-primary"
+                        />
+                      </div>
+
+                      {/* Múltiple */}
+                      <div className="flex flex-col items-center justify-end gap-1 pb-1">
+                        <Label className="text-[10px] text-muted-foreground">Múltiple</Label>
+                        <input
+                          type="checkbox"
+                          checked={fb.multiple ?? false}
+                          onChange={(e) =>
+                            updateFileBlock(sIdx, fbIdx, { multiple: e.target.checked })
+                          }
+                          className="h-4 w-4 accent-primary"
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               <div className="flex gap-2">
                 <Button

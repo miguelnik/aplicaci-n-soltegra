@@ -131,9 +131,31 @@ export function FileUploader({ fileBlock, requestId, organizationId, disabled, o
   // Forzamos a boolean para respetar la configuración del admin.
   const allowMultiple = fileBlock.multiple === true;
 
+  // Convierte el array accept del schema al Record<MimeType, Extension[]> de react-dropzone.
+  // "image/*" => { "image/*": [] }
+  // ".dxf"    => { "application/octet-stream": [".dxf"] }
+  // "*/*"     => {} (sin restriccion, acepta todo)
+  function buildDropzoneAccept(accept: string[]): Record<string, string[]> {
+    // Comodín total: sin restricción en react-dropzone
+    if (accept.includes("*/*") || accept.includes("*")) return {};
+
+    const result: Record<string, string[]> = {};
+    for (const a of accept) {
+      if (a.startsWith(".")) {
+        // Extensión: la agrupamos bajo octet-stream para que react-dropzone
+        // aplique el filtro por extensión en el selector de archivos del OS.
+        if (!result["application/octet-stream"]) result["application/octet-stream"] = [];
+        result["application/octet-stream"].push(a);
+      } else {
+        result[a] = result[a] ?? [];
+      }
+    }
+    return result;
+  }
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: fileBlock.accept.reduce((acc, type) => ({ ...acc, [type]: [] }), {}),
+    accept: buildDropzoneAccept(fileBlock.accept),
     multiple: allowMultiple,
     maxFiles: allowMultiple ? fileBlock.maxCount : 1,
     disabled: disabled || uploading,

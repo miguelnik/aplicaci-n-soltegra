@@ -51,22 +51,46 @@ export function buildZodFromSchema(schema: FormSchema) {
 
 /**
  * Validación del lado del archivo (cliente y servidor):
- * - mime type contra `accept`
+ * - mime type o extensión contra `accept`
  * - tamaño máximo
+ *
+ * Los patrones de accept pueden ser:
+ *   "image/*"         - wildcard de categoria MIME
+ *   "application/pdf" - MIME exacto
+ *   ".dxf"            - extension (con punto)
+ *   "*\/*" o "*"      - acepta cualquier tipo
  */
 export function validateFile(
   file: { name: string; type: string; size: number },
   block: { accept: string[]; maxSizeMb?: number },
 ): string | null {
+  // Comodín total: aceptar todo sin validar tipo
+  if (block.accept.includes("*/*") || block.accept.includes("*")) {
+    if (block.maxSizeMb && file.size > block.maxSizeMb * 1024 * 1024) {
+      return `Archivo demasiado grande. Máximo ${block.maxSizeMb} MB`;
+    }
+    return null;
+  }
+
+  const fileExt = "." + (file.name.split(".").pop() ?? "").toLowerCase();
+
   const accepted = block.accept.some((pattern) => {
+    // Extensión explícita: ".pdf", ".dxf", ".dwg" …
+    if (pattern.startsWith(".")) {
+      return fileExt === pattern.toLowerCase();
+    }
+    // Wildcard de categoría MIME: "image/*", "video/*" …
     if (pattern.endsWith("/*")) {
       const prefix = pattern.slice(0, -2);
       return file.type.startsWith(prefix + "/");
     }
+    // MIME exacto: "application/pdf" …
     return file.type === pattern;
   });
+
   if (!accepted) {
-    return `Tipo de archivo no permitido (${file.type}). Aceptados: ${block.accept.join(", ")}`;
+    const humanList = block.accept.join(", ");
+    return `Tipo de archivo no permitido. Formatos aceptados: ${humanList}`;
   }
   if (block.maxSizeMb && file.size > block.maxSizeMb * 1024 * 1024) {
     return `Archivo demasiado grande. Máximo ${block.maxSizeMb} MB`;
