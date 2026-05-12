@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { ArrowLeft, FileText, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, Trash2, LayoutDashboard } from "lucide-react";
 
 async function updateService(serviceId: string, formData: FormData) {
   "use server";
@@ -99,12 +99,20 @@ export default async function EditarServicioPage({ params, searchParams }: Props
         </Link>
         <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-bold">{service.name}</h1>
-          <Button asChild>
-            <Link href={`/admin/servicios/${id}/formulario`}>
-              <FileText className="h-4 w-4" />
-              Editar formulario
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" asChild>
+              <Link href={`/admin/servicios/${id}/portal`}>
+                <LayoutDashboard className="h-4 w-4" />
+                Portal cliente
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href={`/admin/servicios/${id}/formulario`}>
+                <FileText className="h-4 w-4" />
+                Editar formulario
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { ServiceModuleConfig } from "@/lib/modules/types";
 
 export { nameToSlug } from "./slug";
 
@@ -10,6 +11,11 @@ export interface ServiceType {
   icon: string | null;
   is_active: boolean;
   display_order: number;
+  /**
+   * Configuración de módulos del portal del cliente para este servicio.
+   * Si es null, se usa la configuración por defecto definida en lib/modules/defaults.ts.
+   */
+  module_config: ServiceModuleConfig | null;
   created_at: string;
   updated_at: string;
 }
@@ -58,4 +64,3 @@ export async function getServiceById(id: string): Promise<ServiceType | null> {
     .single();
   return (data as ServiceType | null) ?? null;
 }
-

@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Briefcase, PlusCircle, Settings, FileText } from "lucide-react";
+import { Briefcase, PlusCircle, Settings, FileText, LayoutDashboard } from "lucide-react";
 
 export default async function AdminServiciosPage() {
   await requireAdmin();
@@ -68,7 +68,7 @@ export default async function AdminServiciosPage() {
                   <p className="text-xs text-muted-foreground">
                     {count} solicitud{count !== 1 ? "es" : ""}
                   </p>
-                  <div className="flex gap-2 border-t pt-2">
+                  <div className="flex flex-wrap gap-2 border-t pt-2">
                     <Button variant="outline" size="sm" className="flex-1" asChild>
                       <Link href={`/admin/servicios/${s.id}`}>
                         <Settings className="h-3.5 w-3.5" />
@@ -79,6 +79,12 @@ export default async function AdminServiciosPage() {
                       <Link href={`/admin/servicios/${s.id}/formulario`}>
                         <FileText className="h-3.5 w-3.5" />
                         Formulario
+                      </Link>
+                    </Button>
+                    <Button variant="outline" size="sm" className="w-full" asChild>
+                      <Link href={`/admin/servicios/${s.id}/portal`}>
+                        <LayoutDashboard className="h-3.5 w-3.5" />
+                        Portal cliente
                       </Link>
                     </Button>
                   </div>

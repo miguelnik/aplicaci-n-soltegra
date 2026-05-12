@@ -181,7 +181,7 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
                 </td>
                 <td className="px-4 py-3 text-center">
                   {clientMessageIds.has(r.id) && (
-                    <MessageSquare className="inline h-4 w-4 text-blue-500" title="Tiene mensajes del cliente" />
+                    <span title="Tiene mensajes del cliente"><MessageSquare className="inline h-4 w-4 text-blue-500" /></span>
                   )}
                 </td>
                 <td className="px-4 py-3">
