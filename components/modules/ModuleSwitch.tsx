@@ -81,7 +81,7 @@ export function ModuleSwitch({ module, data, currentRole }: Props) {
       );
 
     case "incidents":
-      return <IncidentsModule module={module} data={data} />;
+      return <IncidentsModule module={module} data={data} currentRole={currentRole} />;
 
     case "risks":
       return <RisksModule module={module} data={data} />;
@@ -92,10 +92,10 @@ export function ModuleSwitch({ module, data, currentRole }: Props) {
       return <ConstructionDashboardModule module={module} data={data} />;
 
     case "site_visits":
-      return <SiteVisitsModule module={module} data={data} />;
+      return <SiteVisitsModule module={module} data={data} currentRole={currentRole} />;
 
     case "site_photos":
-      return <SitePhotosModule module={module} data={data} />;
+      return <SitePhotosModule module={module} data={data} currentRole={currentRole} />;
 
     case "meeting_minutes":
       return <MeetingMinutesModule module={module} data={data} />;

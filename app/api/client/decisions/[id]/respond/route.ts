@@ -32,8 +32,11 @@ export async function POST(
   // Parsear body
   const body = await req.json().catch(() => null);
   const response = (body?.response ?? "").trim();
-  if (!response) {
-    return NextResponse.json({ error: "La respuesta no puede estar vacía" }, { status: 400 });
+  const decisionStatus = body?.status as string | undefined;
+  const validStatuses = ["approved", "rejected", "deferred"];
+
+  if (!validStatuses.includes(decisionStatus ?? "")) {
+    return NextResponse.json({ error: "Selecciona aprobar, rechazar o aplazar" }, { status: 400 });
   }
 
   // Verificar que la decisión existe, pertenece a la organización del cliente,
@@ -75,6 +78,7 @@ export async function POST(
   const { error } = await supabase
     .from("expedition_decisions")
     .update({
+      status: decisionStatus,
       client_response: response,
       client_responded_at: new Date().toISOString(),
     })

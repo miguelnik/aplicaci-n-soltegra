@@ -91,6 +91,20 @@ export async function deleteDecision(requestId: string, id: string) {
   redirect(backUrl(requestId, "decisions"));
 }
 
+export async function updateDecisionStatus(requestId: string, id: string, formData: FormData) {
+  await requireAdmin();
+  const admin = createSupabaseAdminClient();
+  const status = (formData.get("status") as string) || "pending";
+  await admin
+    .from("expedition_decisions")
+    .update({
+      status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  redirect(backUrl(requestId, "decisions"));
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // INCIDENCIAS
 // ────────────────────────────────────────────────────────────────────────────

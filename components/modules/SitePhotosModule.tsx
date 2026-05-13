@@ -4,20 +4,24 @@
 // Grid de thumbnails con lightbox básico (dialog nativo).
 
 import { useState } from "react";
-import { Image as ImageIcon, X, Calendar } from "lucide-react";
+import { Image as ImageIcon, X, Calendar, Upload } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 import type { ModuleConfig, ModulePageData } from "@/lib/modules/types";
 
 interface Props {
   module: ModuleConfig;
   data: ModulePageData;
+  currentRole: "client" | "admin";
 }
 
-export function SitePhotosModule({ module: mod, data }: Props) {
-  const { photos } = data;
+export function SitePhotosModule({ module: mod, data, currentRole }: Props) {
+  const { photos, req } = data;
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [lightboxCaption, setLightboxCaption] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const sorted =
     photos && photos.length > 0
@@ -37,6 +41,35 @@ export function SitePhotosModule({ module: mod, data }: Props) {
     setLightboxCaption(null);
   }
 
+  async function uploadPhotos(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    let uploaded = 0;
+
+    for (const file of Array.from(files)) {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("requestId", req.id);
+      fd.append("visibleToClient", "1");
+      const res = await fetch("/api/admin/expedition-photos/upload", {
+        method: "POST",
+        body: fd,
+      });
+      if (res.ok) {
+        uploaded++;
+      } else {
+        const body = await res.json().catch(() => ({}));
+        toast.error(`Error subiendo ${file.name}: ${body.error ?? "error desconocido"}`);
+      }
+    }
+
+    setUploading(false);
+    if (uploaded > 0) {
+      toast.success(`${uploaded} foto${uploaded > 1 ? "s" : ""} subida${uploaded > 1 ? "s" : ""}`);
+      window.location.reload();
+    }
+  }
+
   return (
     <section aria-labelledby="photos-heading" className="space-y-3">
       <h2
@@ -51,6 +84,19 @@ export function SitePhotosModule({ module: mod, data }: Props) {
           </span>
         )}
       </h2>
+
+      <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted">
+        <Upload className={uploading ? "h-4 w-4 animate-pulse" : "h-4 w-4"} />
+        {uploading ? "Subiendo..." : currentRole === "client" ? "Subir fotos" : "Añadir fotos"}
+        <Input
+          type="file"
+          accept="image/*,.heic,.heif"
+          multiple
+          className="hidden"
+          disabled={uploading}
+          onChange={(event) => uploadPhotos(event.target.files)}
+        />
+      </label>
 
       {sorted.length === 0 && (
         <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
@@ -89,6 +135,9 @@ export function SitePhotosModule({ module: mod, data }: Props) {
                   </p>
                 </div>
               )}
+              <div className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+                {photo.uploaded_by_role === "client" ? "Cliente" : "Soltegra"}
+              </div>
             </button>
           ))}
         </div>

@@ -41,6 +41,7 @@ export interface ExpeditionDecision {
   is_visible_to_client: boolean;
   created_at: string;
   updated_at: string;
+  attachments?: ExpeditionAttachment[];
 }
 
 // ── Incidencias ──────────────────────────────────────────────────────────────
@@ -56,6 +57,7 @@ export interface ExpeditionIncident {
   resolved_at: string | null;
   created_at: string;
   updated_at: string;
+  attachments?: ExpeditionAttachment[];
 }
 
 // ── Riesgos ──────────────────────────────────────────────────────────────────
@@ -84,6 +86,7 @@ export interface ExpeditionSiteVisit {
   observations: string | null;
   is_visible_to_client: boolean;
   created_at: string;
+  attachments?: ExpeditionAttachment[];
 }
 
 // ── Actas ────────────────────────────────────────────────────────────────────
@@ -143,6 +146,23 @@ export interface ExpeditionPhoto {
   caption: string | null;
   taken_at: string | null;   // ISO date YYYY-MM-DD
   is_visible_to_client: boolean;
+  uploaded_by: string | null;
+  uploaded_by_role: "admin" | "client";
   uploaded_at: string;
   signedUrl?: string | null;  // generada en runtime
+}
+
+export interface ExpeditionAttachment {
+  id: string;
+  request_id: string;
+  entity_type: "decision" | "incident" | "site_visit";
+  entity_id: string;
+  storage_path: string;
+  original_filename: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  uploaded_by: string | null;
+  uploaded_by_role: "admin" | "client";
+  created_at: string;
+  signedUrl?: string | null;
 }

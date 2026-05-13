@@ -74,7 +74,7 @@ export function PhotoUploader({ requestId, organizationId }: Props) {
           <Input
             id="photo-files"
             type="file"
-            accept="image/*"
+            accept="image/*,.heic,.heif"
             multiple
             required
             disabled={uploading}

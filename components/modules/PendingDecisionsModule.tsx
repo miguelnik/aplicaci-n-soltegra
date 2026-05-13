@@ -10,6 +10,7 @@ import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { EntityAttachments } from "./EntityAttachments";
 import { toast } from "sonner";
 import type { ModuleConfig, ModulePageData } from "@/lib/modules/types";
 import type { DecisionStatus } from "@/lib/modules/expedition-types";
@@ -38,20 +39,20 @@ function DecisionCard({
 }) {
   const [responding, setResponding] = useState(false);
   const [responseText, setResponseText] = useState("");
+  const [decisionStatus, setDecisionStatus] = useState<DecisionStatus>("approved");
   const [submitting, setSubmitting] = useState(false);
   const cfg = STATUS_CONFIG[decision.status] ?? STATUS_CONFIG.pending;
 
   async function submitResponse() {
-    if (!responseText.trim()) {
-      toast.error("Escribe tu respuesta antes de enviar");
-      return;
-    }
     setSubmitting(true);
     try {
       const res = await fetch(`/api/client/decisions/${decision.id}/respond`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ response: responseText.trim() }),
+        body: JSON.stringify({
+          response: responseText.trim(),
+          status: decisionStatus,
+        }),
       });
       if (!res.ok) throw new Error("Error al enviar la respuesta");
       toast.success("Respuesta enviada correctamente");
@@ -84,8 +85,17 @@ function DecisionCard({
       </div>
 
       {decision.description && (
-        <p className="mt-2 text-sm text-muted-foreground">{decision.description}</p>
+        <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">{decision.description}</p>
       )}
+
+      <EntityAttachments
+        requestId={requestId}
+        entityType="decision"
+        entityId={decision.id}
+        attachments={decision.attachments}
+        canUpload={canRespond}
+        compact
+      />
 
       <div className="mt-2 flex flex-wrap gap-4 text-xs text-muted-foreground">
         {decision.deadline && (
@@ -128,10 +138,24 @@ function DecisionCard({
             </Button>
           ) : (
             <div className="space-y-2">
+              <div className="grid gap-2 sm:grid-cols-3">
+                {(["approved", "rejected", "deferred"] as DecisionStatus[]).map((status) => (
+                  <Button
+                    key={status}
+                    type="button"
+                    size="sm"
+                    variant={decisionStatus === status ? "default" : "outline"}
+                    onClick={() => setDecisionStatus(status)}
+                    disabled={submitting}
+                  >
+                    {STATUS_CONFIG[status].label}
+                  </Button>
+                ))}
+              </div>
               <Textarea
                 value={responseText}
                 onChange={(e) => setResponseText(e.target.value)}
-                placeholder="Escribe tu respuesta o confirmación..."
+                placeholder="Comentario opcional..."
                 rows={3}
                 disabled={submitting}
               />

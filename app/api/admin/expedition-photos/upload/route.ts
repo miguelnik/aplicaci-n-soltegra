@@ -1,6 +1,6 @@
 // POST /api/admin/expedition-photos/upload
 // Sube una foto al bucket 'expedition-photos' e inserta en expedition_photos.
-// Solo accesible para administradores.
+// Accesible para administradores y clientes de la organización propietaria.
 
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -18,11 +18,11 @@ export async function POST(request: Request) {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("role, organization_id")
       .eq("id", user.id)
       .single();
 
-    if (!profile || profile.role !== "admin") {
+    if (!profile) {
       return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
     }
 
@@ -41,10 +41,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const lowerName = file.name.toLowerCase();
+    const isMobileImage =
+      lowerName.endsWith(".heic") || lowerName.endsWith(".heif");
+
     // Validar que sea imagen
-    if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
+    if (!file.type.startsWith("image/") && !isMobileImage) {
       return NextResponse.json(
-        { ok: false, error: "Solo se permiten imágenes y PDF para fotos de obra" },
+        { ok: false, error: "Solo se permiten imágenes para fotos de obra" },
         { status: 400 },
       );
     }
@@ -59,6 +63,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Solicitud no encontrada" }, { status: 404 });
     }
 
+    if (profile.role !== "admin" && req.organization_id !== profile.organization_id) {
+      return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
+    }
+
     // ── Subir al bucket ──────────────────────────────────────────────────────
     const ext = file.name.includes(".") ? file.name.split(".").pop() : "jpg";
     const uuid = crypto.randomUUID();
@@ -71,7 +79,7 @@ export async function POST(request: Request) {
     const { error: uploadError } = await adminClient.storage
       .from("expedition-photos")
       .upload(storagePath, buffer, {
-        contentType: file.type || "image/jpeg",
+        contentType: file.type || "application/octet-stream",
         upsert: false,
       });
 
@@ -91,7 +99,9 @@ export async function POST(request: Request) {
       size_bytes: file.size,
       caption,
       taken_at: takenAt || null,
-      is_visible_to_client: visibleToClient,
+      is_visible_to_client: profile.role === "admin" ? visibleToClient : true,
+      uploaded_by: user.id,
+      uploaded_by_role: profile.role,
     });
 
     if (dbError) {

@@ -127,4 +127,5 @@ export interface ModulePageData {
   photos: import("@/lib/modules/expedition-types").ExpeditionPhoto[];
   budget: import("@/lib/modules/expedition-types").ExpeditionBudget | null;
   costItems: import("@/lib/modules/expedition-types").ExpeditionCostItem[];
+  attachments: import("@/lib/modules/expedition-types").ExpeditionAttachment[];
 }

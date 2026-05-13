@@ -18,12 +18,14 @@ import {
   Plus,
 } from "lucide-react";
 import { PhotoUploader } from "./PhotoUploader";
+import { EntityAttachments } from "@/components/modules/EntityAttachments";
 import {
   saveMilestone,
   completeMilestone,
   deleteMilestone,
   saveDecision,
   deleteDecision,
+  updateDecisionStatus,
   saveIncident,
   deleteIncident,
   saveRisk,
@@ -158,6 +160,7 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
     { data: budget },
     { data: costItems },
     { data: rawPhotos },
+    { data: rawAttachments },
   ] = await Promise.all([
     admin.from("expedition_milestones").select("*").eq("request_id", requestId).order("order"),
     admin.from("expedition_decisions").select("*").eq("request_id", requestId).order("created_at"),
@@ -168,6 +171,7 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
     admin.from("expedition_budget").select("*").eq("request_id", requestId).maybeSingle(),
     admin.from("expedition_cost_items").select("*").eq("request_id", requestId).order("created_at"),
     admin.from("expedition_photos").select("*").eq("request_id", requestId).order("uploaded_at", { ascending: false }),
+    admin.from("expedition_attachments").select("*").eq("request_id", requestId).order("created_at"),
   ]);
 
   // Fotos con signed URLs
@@ -179,6 +183,20 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
       return { ...p, signedUrl: data?.signedUrl ?? null };
     }),
   );
+
+  const attachments = await Promise.all(
+    (rawAttachments ?? []).map(async (a) => {
+      const { data } = await admin.storage
+        .from("expedition-attachments")
+        .createSignedUrl(a.storage_path, 900);
+      return { ...a, signedUrl: data?.signedUrl ?? null };
+    }),
+  );
+
+  const attachmentsFor = (
+    entityType: "decision" | "incident" | "site_visit",
+    entityId: string,
+  ) => attachments.filter((a) => a.entity_type === entityType && a.entity_id === entityId);
 
   // ── Binders para Server Actions ──────────────────────────────────────────
   const saveMilestoneA   = saveMilestone.bind(null, requestId);
@@ -325,6 +343,7 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
           <div className="space-y-2">
             {(decisions ?? []).map((d) => {
               const del = deleteDecision.bind(null, requestId, d.id);
+              const updateStatus = updateDecisionStatus.bind(null, requestId, d.id);
               return (
                 <div key={d.id} className="flex items-start gap-2 rounded-lg border bg-card px-4 py-3">
                   <div className="flex-1 min-w-0">
@@ -339,10 +358,29 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
                         Resp. cliente: &ldquo;{d.client_response}&rdquo;
                       </p>
                     )}
+                    {d.description && (
+                      <p className="mt-1 whitespace-pre-line text-xs text-muted-foreground">
+                        {d.description}
+                      </p>
+                    )}
+                    <EntityAttachments
+                      requestId={requestId}
+                      entityType="decision"
+                      entityId={d.id}
+                      attachments={attachmentsFor("decision", d.id)}
+                      canUpload
+                      compact
+                    />
                   </div>
-                  <Badge variant={d.status === "pending" ? "default" : "secondary"}>
-                    {d.status}
-                  </Badge>
+                  <form action={updateStatus} className="flex items-center gap-1">
+                    <Select name="status" defaultValue={d.status} options={[
+                      { value: "pending", label: "Pendiente" },
+                      { value: "approved", label: "Aprobado" },
+                      { value: "rejected", label: "Rechazado" },
+                      { value: "deferred", label: "Aplazado" },
+                    ]} />
+                    <Button type="submit" size="sm" variant="outline">Guardar</Button>
+                  </form>
                   <form action={del}>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" type="submit">
                       <Trash2 className="h-3.5 w-3.5" />
@@ -411,6 +449,14 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
                     {inc.description && (
                       <p className="text-xs text-muted-foreground mt-0.5">{inc.description}</p>
                     )}
+                    <EntityAttachments
+                      requestId={requestId}
+                      entityType="incident"
+                      entityId={inc.id}
+                      attachments={attachmentsFor("incident", inc.id)}
+                      canUpload
+                      compact
+                    />
                   </div>
                   <Badge variant={severityColor}>{inc.severity}</Badge>
                   <form action={del}>
@@ -571,6 +617,14 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
                         {v.observations}
                       </p>
                     )}
+                    <EntityAttachments
+                      requestId={requestId}
+                      entityType="site_visit"
+                      entityId={v.id}
+                      attachments={attachmentsFor("site_visit", v.id)}
+                      canUpload
+                      compact
+                    />
                   </div>
                   <form action={del}>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" type="submit">
@@ -824,6 +878,9 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
                         {p.caption}
                       </p>
                     )}
+                    <p className="px-1.5 pb-1 text-[10px] text-muted-foreground">
+                      Subida por {p.uploaded_by_role === "client" ? "cliente" : "Soltegra"}
+                    </p>
                     <div className="flex gap-1 px-1.5 pb-1.5">
                       <form action={toggleVisibility} className="flex-1">
                         <Button

@@ -4,15 +4,17 @@
 import { HardHat, Calendar } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
+import { EntityAttachments } from "./EntityAttachments";
 import type { ModuleConfig, ModulePageData } from "@/lib/modules/types";
 
 interface Props {
   module: ModuleConfig;
   data: ModulePageData;
+  currentRole: "client" | "admin";
 }
 
-export function SiteVisitsModule({ module: mod, data }: Props) {
-  const { siteVisits } = data;
+export function SiteVisitsModule({ module: mod, data, currentRole }: Props) {
+  const { siteVisits, req } = data;
   const sorted = siteVisits && siteVisits.length > 0
     ? [...siteVisits].sort((a, b) => new Date(b.visited_at).getTime() - new Date(a.visited_at).getTime())
     : [];
@@ -50,6 +52,14 @@ export function SiteVisitsModule({ module: mod, data }: Props) {
                 {visit.observations}
               </p>
             )}
+            <EntityAttachments
+              requestId={req.id}
+              entityType="site_visit"
+              entityId={visit.id}
+              attachments={visit.attachments}
+              canUpload={currentRole === "admin"}
+              compact
+            />
           </li>
         ))}
       </ol>

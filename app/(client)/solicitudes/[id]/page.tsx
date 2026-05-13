@@ -87,6 +87,7 @@ export default async function SolicitudDetallePage({ params }: Props) {
     { data: budget },
     { data: costItems },
     { data: rawPhotos },
+    { data: rawAttachments },
   ] = await Promise.all([
     supabase.from("expedition_milestones").select("*").eq("request_id", id).order("order"),
     supabase.from("expedition_decisions").select("*").eq("request_id", id).order("created_at"),
@@ -97,6 +98,7 @@ export default async function SolicitudDetallePage({ params }: Props) {
     supabase.from("expedition_budget").select("*").eq("request_id", id).maybeSingle(),
     supabase.from("expedition_cost_items").select("*").eq("request_id", id).order("created_at"),
     supabase.from("expedition_photos").select("*").eq("request_id", id).order("uploaded_at", { ascending: false }),
+    supabase.from("expedition_attachments").select("*").eq("request_id", id).order("created_at"),
   ]);
 
   // Generar signed URLs para fotos y actas con adjuntos
@@ -118,6 +120,18 @@ export default async function SolicitudDetallePage({ params }: Props) {
       return { ...m, signedUrl: data?.signedUrl ?? null };
     }),
   );
+
+  const attachments = await Promise.all(
+    (rawAttachments ?? []).map(async (a) => {
+      const { data } = await supabase.storage
+        .from("expedition-attachments")
+        .createSignedUrl(a.storage_path, 900);
+      return { ...a, signedUrl: data?.signedUrl ?? null };
+    }),
+  );
+
+  const attachmentsFor = (entityType: "decision" | "incident" | "site_visit", entityId: string) =>
+    attachments.filter((a) => a.entity_type === entityType && a.entity_id === entityId);
 
   // ── 5. Configuración de módulos para este tipo de servicio ───────────────
   const serviceSlug =
@@ -164,14 +178,24 @@ export default async function SolicitudDetallePage({ params }: Props) {
     expeditionDocuments,
     // Módulos de proyecto y obra
     milestones:     (rawMilestones ?? []) as import("@/lib/modules/expedition-types").ExpeditionMilestone[],
-    decisions:      (rawDecisions ?? []) as import("@/lib/modules/expedition-types").ExpeditionDecision[],
-    incidents:      (rawIncidents ?? []) as import("@/lib/modules/expedition-types").ExpeditionIncident[],
+    decisions:      (rawDecisions ?? []).map((d) => ({
+      ...d,
+      attachments: attachmentsFor("decision", d.id),
+    })) as import("@/lib/modules/expedition-types").ExpeditionDecision[],
+    incidents:      (rawIncidents ?? []).map((i) => ({
+      ...i,
+      attachments: attachmentsFor("incident", i.id),
+    })) as import("@/lib/modules/expedition-types").ExpeditionIncident[],
     risks:          (rawRisks ?? []) as import("@/lib/modules/expedition-types").ExpeditionRisk[],
-    siteVisits:     (rawSiteVisits ?? []) as import("@/lib/modules/expedition-types").ExpeditionSiteVisit[],
+    siteVisits:     (rawSiteVisits ?? []).map((v) => ({
+      ...v,
+      attachments: attachmentsFor("site_visit", v.id),
+    })) as import("@/lib/modules/expedition-types").ExpeditionSiteVisit[],
     meetingMinutes: meetingMinutes as import("@/lib/modules/expedition-types").ExpeditionMeetingMinute[],
     photos:         photos as import("@/lib/modules/expedition-types").ExpeditionPhoto[],
     budget:         (budget ?? null) as import("@/lib/modules/expedition-types").ExpeditionBudget | null,
     costItems:      (costItems ?? []) as import("@/lib/modules/expedition-types").ExpeditionCostItem[],
+    attachments:    attachments as import("@/lib/modules/expedition-types").ExpeditionAttachment[],
   };
 
   return (
