@@ -30,14 +30,13 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     const requestId = formData.get("requestId") as string | null;
-    const organizationId = formData.get("organizationId") as string | null;
     const caption = (formData.get("caption") as string | null)?.trim() || null;
     const takenAt = (formData.get("takenAt") as string | null)?.trim() || null;
     const visibleToClient = formData.get("visibleToClient") !== "0";
 
-    if (!file || !requestId || !organizationId) {
+    if (!file || !requestId) {
       return NextResponse.json(
-        { ok: false, error: "Faltan campos: file, requestId, organizationId" },
+        { ok: false, error: "Faltan campos: file, requestId" },
         { status: 400 },
       );
     }
@@ -50,10 +49,20 @@ export async function POST(request: Request) {
       );
     }
 
+    const { data: req } = await supabase
+      .from("certificate_requests")
+      .select("id, organization_id")
+      .eq("id", requestId)
+      .single();
+
+    if (!req) {
+      return NextResponse.json({ ok: false, error: "Solicitud no encontrada" }, { status: 404 });
+    }
+
     // ── Subir al bucket ──────────────────────────────────────────────────────
     const ext = file.name.includes(".") ? file.name.split(".").pop() : "jpg";
     const uuid = crypto.randomUUID();
-    const storagePath = `${organizationId}/${requestId}/${uuid}.${ext}`;
+    const storagePath = `${req.organization_id}/${requestId}/${uuid}.${ext}`;
 
     const adminClient = createSupabaseAdminClient();
     const arrayBuffer = await file.arrayBuffer();

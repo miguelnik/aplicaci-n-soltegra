@@ -30,14 +30,13 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     const requestId = formData.get("requestId") as string | null;
-    const organizationId = formData.get("organizationId") as string | null;
     const label = (formData.get("label") as string | null)?.trim();
     const category = formData.get("category") as string | null;
     const visibleToClient = formData.get("visibleToClient") === "1";
 
-    if (!file || !requestId || !organizationId || !label || !category) {
+    if (!file || !requestId || !label || !category) {
       return NextResponse.json(
-        { ok: false, error: "Faltan campos obligatorios (file, requestId, organizationId, label, category)" },
+        { ok: false, error: "Faltan campos obligatorios (file, requestId, label, category)" },
         { status: 400 },
       );
     }
@@ -64,7 +63,7 @@ export async function POST(request: Request) {
     // ── Subir archivo al bucket ──────────────────────────────────────────────
     const ext = file.name.includes(".") ? file.name.split(".").pop() : "bin";
     const uuid = crypto.randomUUID();
-    const storagePath = `${organizationId}/${requestId}/${uuid}.${ext}`;
+    const storagePath = `${req.organization_id}/${requestId}/${uuid}.${ext}`;
 
     const adminClient = createSupabaseAdminClient();
     const arrayBuffer = await file.arrayBuffer();

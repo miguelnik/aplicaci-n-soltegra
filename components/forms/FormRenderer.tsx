@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { buildZodFromSchema } from "@/lib/form-schema/validate";
+import { buildZodFromSchema, validateFileCount } from "@/lib/form-schema/validate";
 import type { FormSchema, FormData } from "@/lib/form-schema/types";
 import {
   FieldText,
@@ -62,6 +62,12 @@ export function FormRenderer({
   disabled = false,
 }: Props) {
   const zodSchema = buildZodFromSchema(schema);
+  const fileBlocks = useMemo(
+    () => schema.sections.flatMap((section) => section.files ?? []),
+    [schema],
+  );
+  const [fileCounts, setFileCounts] = useState<Record<string, number>>({});
+  const [fileErrors, setFileErrors] = useState<Record<string, string | null>>({});
   const methods = useForm({
     resolver: zodResolver(zodSchema),
     defaultValues: defaultValues ?? {},
@@ -82,9 +88,30 @@ export function FormRenderer({
     await onSaveDraft(data);
   };
 
+  const handleFileCountChange = (key: string, count: number) => {
+    setFileCounts((prev) => ({ ...prev, [key]: count }));
+    setFileErrors((prev) => ({ ...prev, [key]: null }));
+  };
+
+  const validateFilesBeforeSubmit = () => {
+    const nextErrors: Record<string, string | null> = {};
+    for (const fileBlock of fileBlocks) {
+      const error = validateFileCount(fileCounts[fileBlock.key] ?? 0, fileBlock);
+      if (error) nextErrors[fileBlock.key] = error;
+    }
+
+    setFileErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const handleSubmit = methods.handleSubmit(async (data) => {
+    if (!validateFilesBeforeSubmit()) return;
+    await onSubmit(data as FormData);
+  });
+
   return (
     <FormProvider {...methods}>
-      <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-8">
         {schema.sections.map((section) => (
           <div key={section.id} className="space-y-4">
             <div>
@@ -120,6 +147,8 @@ export function FormRenderer({
                     requestId={requestId}
                     organizationId={organizationId}
                     disabled={disabled}
+                    error={fileErrors[fileBlock.key]}
+                    onFilesChange={handleFileCountChange}
                     onBeforeUpload={onBeforeFileUpload}
                   />
                 ))}

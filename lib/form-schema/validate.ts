@@ -11,10 +11,13 @@ function fieldToZod(field: Field): ZodTypeAny {
       return field.required ? s.min(1, "Campo obligatorio") : s.optional().or(z.literal(""));
     }
     case "number": {
-      let s = z.coerce.number();
-      if (field.min !== undefined) s = s.min(field.min);
-      if (field.max !== undefined) s = s.max(field.max);
-      return field.required ? s : s.optional().nullable();
+      let numberSchema = z.coerce.number();
+      if (field.min !== undefined) numberSchema = numberSchema.min(field.min);
+      if (field.max !== undefined) numberSchema = numberSchema.max(field.max);
+      return z.preprocess(
+        (value) => (value === "" || value === null ? undefined : value),
+        field.required ? numberSchema : numberSchema.optional(),
+      );
     }
     case "date": {
       // ISO date YYYY-MM-DD

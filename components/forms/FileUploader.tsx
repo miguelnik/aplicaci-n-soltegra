@@ -26,11 +26,21 @@ interface Props {
   requestId: string;
   organizationId: string;
   disabled?: boolean;
+  error?: string | null;
+  onFilesChange?: (key: string, count: number) => void;
   /** Called before upload starts; return false to abort (e.g. to ensure draft exists) */
   onBeforeUpload?: () => Promise<boolean>;
 }
 
-export function FileUploader({ fileBlock, requestId, organizationId, disabled, onBeforeUpload }: Props) {
+export function FileUploader({
+  fileBlock,
+  requestId,
+  organizationId,
+  disabled,
+  error,
+  onFilesChange,
+  onBeforeUpload,
+}: Props) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [uploading, setUploading] = useState(false);
 
@@ -89,8 +99,7 @@ export function FileUploader({ fileBlock, requestId, organizationId, disabled, o
             continue;
           }
 
-          // Registrar en BD
-          await supabase.from("request_files").insert({
+          const { error: dbError } = await supabase.from("request_files").insert({
             request_id: requestId,
             field_key: fileBlock.key,
             storage_path: path,
@@ -98,6 +107,12 @@ export function FileUploader({ fileBlock, requestId, organizationId, disabled, o
             mime_type: file.type,
             size_bytes: fileToUpload.size,
           });
+
+          if (dbError) {
+            await supabase.storage.from("request-uploads").remove([path]);
+            toast.error(`Error registrando ${file.name}`);
+            continue;
+          }
 
           newUploaded.push({
             id: nanoid(),
@@ -111,20 +126,28 @@ export function FileUploader({ fileBlock, requestId, organizationId, disabled, o
         }
       }
 
-      setFiles((prev) => [...prev, ...newUploaded]);
+      setFiles((prev) => {
+        const next = [...prev, ...newUploaded];
+        onFilesChange?.(fileBlock.key, next.length);
+        return next;
+      });
       setUploading(false);
     },
-    [files, fileBlock, requestId, organizationId, disabled, onBeforeUpload],
+    [files, fileBlock, requestId, organizationId, disabled, onBeforeUpload, onFilesChange],
   );
 
   const removeFile = async (file: UploadedFile) => {
     const supabase = createSupabaseBrowserClient();
     await supabase.storage.from("request-uploads").remove([file.path]);
     await supabase.from("request_files").delete().eq("storage_path", file.path);
-    setFiles((prev) => prev.filter((f) => f.id !== file.id));
+    setFiles((prev) => {
+      const next = prev.filter((f) => f.id !== file.id);
+      onFilesChange?.(fileBlock.key, next.length);
+      return next;
+    });
   };
 
-  const countError = validateFileCount(files.length, fileBlock);
+  const countError = error ?? validateFileCount(files.length, fileBlock);
   const isImage = (mime: string) => mime.startsWith("image/");
 
   // react-dropzone tiene `multiple: true` como default si recibe undefined.
