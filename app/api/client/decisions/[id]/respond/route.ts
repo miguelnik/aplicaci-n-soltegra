@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 // POST /api/client/decisions/[id]/respond
 // Permite al cliente responder a una decisión pendiente.
@@ -74,15 +75,19 @@ export async function POST(
     );
   }
 
-  // Actualizar la decisión
-  const { error } = await supabase
+  // Actualizar la decisión con service role después de validar sesión,
+  // rol, visibilidad, pertenencia a la organización y estado actual.
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin
     .from("expedition_decisions")
     .update({
       status: decisionStatus,
-      client_response: response,
+      client_response: response || null,
       client_responded_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("status", "pending");
 
   if (error) {
     console.error("Error updating decision:", error);
