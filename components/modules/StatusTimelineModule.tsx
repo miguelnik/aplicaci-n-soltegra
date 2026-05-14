@@ -125,15 +125,10 @@ function CustomPhasesTimeline({
   phases: StatusPhase[];
   currentPhaseKey: string | null;
 }) {
-  if (!currentPhaseKey) {
-    return (
-      <div className="rounded-md border border-dashed px-4 py-3 text-sm text-muted-foreground">
-        El equipo actualizará el estado del proyecto próximamente.
-      </div>
-    );
-  }
-
-  const currentIdx = phases.findIndex((p) => p.key === currentPhaseKey);
+  // Si no hay fase activa aún, mostrar la primera fase como estado por defecto
+  const currentIdx = currentPhaseKey
+    ? phases.findIndex((p) => p.key === currentPhaseKey)
+    : 0;
 
   return (
     <div className="flex items-start gap-0">
@@ -219,8 +214,10 @@ export function StatusTimelineModule({ data }: Props) {
       </Card>
 
       {/* Fase actual (descripción) solo con timeline personalizado */}
-      {useCustomPhases && req.current_phase_key && (() => {
-        const activePhase = phases.find((p) => p.key === req.current_phase_key);
+      {useCustomPhases && (() => {
+        const activePhase = req.current_phase_key
+          ? phases.find((p) => p.key === req.current_phase_key)
+          : phases[0];
         return activePhase?.description ? (
           <div className="flex items-start gap-2 rounded-md border bg-muted/30 px-4 py-2 text-sm">
             <Clock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />

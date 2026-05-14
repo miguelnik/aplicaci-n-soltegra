@@ -380,17 +380,18 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
             currentAssignedTo={req.assigned_to ?? null}
             workers={workers ?? []}
           />
-          <StatusChanger
-            requestId={req.id}
-            currentStatus={req.status}
-            currentDeliveryDate={req.estimated_delivery_date}
-            currentInternalNotes={req.internal_notes}
-          />
-          {statusPhases.length > 0 && (
+          {statusPhases.length > 0 ? (
             <PhaseChanger
               requestId={req.id}
               currentPhaseKey={req.current_phase_key ?? null}
               phases={statusPhases}
+            />
+          ) : (
+            <StatusChanger
+              requestId={req.id}
+              currentStatus={req.status}
+              currentDeliveryDate={req.estimated_delivery_date}
+              currentInternalNotes={req.internal_notes}
             />
           )}
           {req.status !== "draft" && req.status !== "cancelled" && (
