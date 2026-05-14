@@ -103,13 +103,15 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
   const supabase = await createSupabaseServerClient();
   const admin = createSupabaseAdminClient();
 
-  // Usar admin client (service_role) para bypasear RLS en páginas de admin
+  // Usar admin client (service_role) para bypasear RLS en páginas de admin.
+  // Nota: usamos alias explícito para las FKs a profiles para evitar ambigüedad
+  // (certificate_requests tiene created_by y assigned_to, ambas → profiles).
   const { data: req } = await admin
     .from("certificate_requests")
     .select(`
       *,
       organizations(name, contact_email),
-      profiles(full_name),
+      creator:created_by(full_name),
       form_schemas(schema),
       service_types(name, slug, status_phases)
     `)
