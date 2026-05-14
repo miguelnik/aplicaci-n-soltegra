@@ -31,6 +31,3 @@ export async function deleteRequest(requestId: string) {
 
 /** @deprecated usar deleteRequest */
 export const deleteDraft = deleteRequest;
-
-/** @deprecated usar deleteRequest */
-export const deleteDraft = deleteRequest;
