@@ -122,11 +122,13 @@ export function FormBuilderClient({ currentSchema, currentVersion, serviceTypeId
 
   const updateSection = (idx: number, patch: Partial<Section>) =>
     setSchema((s) => ({
+      ...s,
       sections: s.sections.map((sec, i) => (i === idx ? { ...sec, ...patch } : sec)),
     }));
 
   const addSection = () =>
     setSchema((s) => ({
+      ...s,
       sections: [
         ...s.sections,
         { id: `seccion_${Date.now()}`, title: "Nueva sección", fields: [] },
@@ -134,7 +136,7 @@ export function FormBuilderClient({ currentSchema, currentVersion, serviceTypeId
     }));
 
   const removeSection = (idx: number) =>
-    setSchema((s) => ({ sections: s.sections.filter((_, i) => i !== idx) }));
+    setSchema((s) => ({ ...s, sections: s.sections.filter((_, i) => i !== idx) }));
 
   const addField = (sectionIdx: number) =>
     updateSection(sectionIdx, {
