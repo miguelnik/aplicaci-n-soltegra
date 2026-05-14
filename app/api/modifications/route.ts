@@ -41,7 +41,9 @@ export async function POST(request: Request) {
     }
 
     // Verificar que la solicitud existe y el usuario tiene acceso
-    const { data: req } = await supabase
+    // Usamos service role para evitar bloqueos de RLS
+    const admin = createSupabaseAdminClient();
+    const { data: req } = await admin
       .from("certificate_requests")
       .select("id, organization_id")
       .eq("id", requestId)
@@ -57,8 +59,6 @@ export async function POST(request: Request) {
     }
 
     const authorRole: "admin" | "client" = isAdmin ? "admin" : "client";
-
-    const admin = createSupabaseAdminClient();
     const { data: inserted, error: dbError } = await admin
       .from("expedition_decisions")
       .insert({

@@ -14,6 +14,7 @@ export async function POST(request: Request, { params }: Params) {
   try {
     const { id } = await params;
 
+    // ── Autenticación ──────────────────────────────────────────────────────
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -31,6 +32,7 @@ export async function POST(request: Request, { params }: Params) {
       return NextResponse.json({ ok: false, error: "Sin perfil" }, { status: 403 });
     }
 
+    // ── Validar acción ─────────────────────────────────────────────────────
     const body = await request.json();
     const { action } = body as { action?: "approved" | "rejected" };
 
@@ -41,8 +43,10 @@ export async function POST(request: Request, { params }: Params) {
       );
     }
 
-    // Obtener la modificación
-    const { data: mod } = await supabase
+    // ── Lookups con service role (evita bloqueos de RLS) ──────────────────
+    const admin = createSupabaseAdminClient();
+
+    const { data: mod } = await admin
       .from("expedition_decisions")
       .select("id, request_id, status, requested_by_role")
       .eq("id", id)
@@ -59,8 +63,7 @@ export async function POST(request: Request, { params }: Params) {
       );
     }
 
-    // Verificar que el usuario tiene acceso a esta solicitud
-    const { data: req } = await supabase
+    const { data: req } = await admin
       .from("certificate_requests")
       .select("id, organization_id")
       .eq("id", mod.request_id)
@@ -70,6 +73,7 @@ export async function POST(request: Request, { params }: Params) {
       return NextResponse.json({ ok: false, error: "Solicitud no encontrada" }, { status: 404 });
     }
 
+    // ── Autorización manual ────────────────────────────────────────────────
     const isAdmin = profile.role === "admin" || profile.role === "superadmin";
     const currentRole: "admin" | "client" = isAdmin ? "admin" : "client";
 
@@ -86,9 +90,8 @@ export async function POST(request: Request, { params }: Params) {
       );
     }
 
+    // ── Actualizar estado ──────────────────────────────────────────────────
     const now = new Date().toISOString();
-    const admin = createSupabaseAdminClient();
-
     const updatePayload =
       action === "approved"
         ? { status: "approved", approved_at: now, approved_by_id: user.id }

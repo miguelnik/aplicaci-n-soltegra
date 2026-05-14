@@ -14,6 +14,7 @@ export async function POST(request: Request, { params }: Params) {
   try {
     const { id } = await params;
 
+    // ── Autenticación ──────────────────────────────────────────────────────
     const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -31,6 +32,7 @@ export async function POST(request: Request, { params }: Params) {
       return NextResponse.json({ ok: false, error: "Sin perfil" }, { status: 403 });
     }
 
+    // ── Cuerpo de la petición ──────────────────────────────────────────────
     const body = await request.json();
     const { requestId, body: msgBody } = body as {
       requestId?: string;
@@ -44,8 +46,10 @@ export async function POST(request: Request, { params }: Params) {
       );
     }
 
-    // Verificar que la modificación existe y pertenece a la solicitud
-    const { data: mod } = await supabase
+    // ── Lookups con service role (evita bloqueos de RLS) ──────────────────
+    const admin = createSupabaseAdminClient();
+
+    const { data: mod } = await admin
       .from("expedition_decisions")
       .select("id, request_id")
       .eq("id", id)
@@ -56,8 +60,7 @@ export async function POST(request: Request, { params }: Params) {
       return NextResponse.json({ ok: false, error: "Modificación no encontrada" }, { status: 404 });
     }
 
-    // Verificar acceso a la solicitud
-    const { data: req } = await supabase
+    const { data: req } = await admin
       .from("certificate_requests")
       .select("id, organization_id")
       .eq("id", requestId)
@@ -67,6 +70,7 @@ export async function POST(request: Request, { params }: Params) {
       return NextResponse.json({ ok: false, error: "Solicitud no encontrada" }, { status: 404 });
     }
 
+    // ── Autorización manual ────────────────────────────────────────────────
     const isAdmin = profile.role === "admin" || profile.role === "superadmin";
     if (!isAdmin && req.organization_id !== profile.organization_id) {
       return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
@@ -74,7 +78,7 @@ export async function POST(request: Request, { params }: Params) {
 
     const authorRole: "admin" | "client" = isAdmin ? "admin" : "client";
 
-    const admin = createSupabaseAdminClient();
+    // ── Insertar mensaje ───────────────────────────────────────────────────
     const { error: dbError } = await admin.from("modification_messages").insert({
       modification_id: id,
       request_id: requestId,
