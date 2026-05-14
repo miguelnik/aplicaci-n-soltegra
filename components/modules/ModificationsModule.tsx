@@ -5,10 +5,10 @@
 // El que NO la crea es quien debe aprobarla o rechazarla.
 // Una vez resuelta, queda bloqueada con fecha de solicitud y resolución.
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   CheckCircle2, XCircle, Clock, Plus, Send, Euro,
-  User, Lock, ChevronDown, ChevronUp, Paperclip,
+  User, Lock, ChevronDown, ChevronUp, Paperclip, X, FileText, Image as ImageIcon,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
@@ -316,15 +316,37 @@ function NewModificationForm({
   currentRole: "client" | "admin";
   onCreated: () => void;
 }) {
-  const [title, setTitle] = useState("");
+  const [title, setTitle]           = useState("");
   const [description, setDescription] = useState("");
-  const [cost, setCost] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [cost, setCost]             = useState("");
+  const [files, setFiles]           = useState<File[]>([]);
+  const [saving, setSaving]         = useState(false);
+  const [statusMsg, setStatusMsg]   = useState("");
+  const fileInputRef                = useRef<HTMLInputElement>(null);
+
+  function addFiles(incoming: FileList | null) {
+    if (!incoming) return;
+    setFiles((prev) => {
+      const existing = new Set(prev.map((f) => f.name + f.size));
+      const next = Array.from(incoming).filter(
+        (f) => !existing.has(f.name + f.size),
+      );
+      return [...prev, ...next];
+    });
+    // Reset el input para permitir seleccionar el mismo archivo de nuevo
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function removeFile(idx: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== idx));
+  }
 
   async function handleCreate() {
     if (!title.trim()) { toast.error("El título es obligatorio"); return; }
     setSaving(true);
     try {
+      // 1. Crear la modificación
+      setStatusMsg("Creando modificación...");
       const res = await fetch("/api/modifications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -337,18 +359,53 @@ function NewModificationForm({
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "Error al crear la modificación");
-      toast.success("Modificación creada");
+
+      const modId: string = body.id;
+
+      // 2. Subir archivos adjuntos (si hay)
+      if (files.length > 0) {
+        let uploaded = 0;
+        for (const file of files) {
+          setStatusMsg(`Subiendo ${file.name}...`);
+          const fd = new FormData();
+          fd.append("file", file);
+          fd.append("requestId", requestId);
+          fd.append("entityType", "decision");
+          fd.append("entityId", modId);
+          const upRes = await fetch("/api/expedition-attachments/upload", {
+            method: "POST",
+            body: fd,
+          });
+          if (upRes.ok) {
+            uploaded++;
+          } else {
+            const upBody = await upRes.json().catch(() => ({}));
+            toast.error(`Error subiendo ${file.name}: ${upBody.error ?? "error desconocido"}`);
+          }
+        }
+        if (uploaded > 0) {
+          toast.success(`Modificación creada con ${uploaded} archivo${uploaded > 1 ? "s" : ""}`);
+        } else {
+          toast.success("Modificación creada (sin archivos adjuntos)");
+        }
+      } else {
+        toast.success("Modificación creada");
+      }
+
       onCreated();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error inesperado");
     } finally {
       setSaving(false);
+      setStatusMsg("");
     }
   }
 
   return (
     <div className="rounded-lg border bg-muted/20 p-4 space-y-3">
       <p className="text-sm font-medium">Nueva solicitud de modificación</p>
+
+      {/* Título */}
       <div className="space-y-1">
         <Label htmlFor="mod-title" className="text-xs">Título *</Label>
         <Input
@@ -357,8 +414,11 @@ function NewModificationForm({
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Describe brevemente la modificación"
           className="h-8 text-sm"
+          disabled={saving}
         />
       </div>
+
+      {/* Descripción */}
       <div className="space-y-1">
         <Label htmlFor="mod-desc" className="text-xs">Descripción detallada</Label>
         <Textarea
@@ -368,8 +428,11 @@ function NewModificationForm({
           placeholder="Explica en detalle qué se quiere modificar y por qué..."
           rows={3}
           className="text-sm"
+          disabled={saving}
         />
       </div>
+
+      {/* Coste */}
       <div className="space-y-1">
         <Label htmlFor="mod-cost" className="text-xs">Coste estimado (€) — opcional</Label>
         <Input
@@ -381,13 +444,68 @@ function NewModificationForm({
           onChange={(e) => setCost(e.target.value)}
           placeholder="0.00"
           className="h-8 w-40 text-sm"
+          disabled={saving}
         />
       </div>
-      <div className="flex gap-2">
+
+      {/* Adjuntos */}
+      <div className="space-y-2">
+        <Label className="text-xs">Fotos o documentos adjuntos — opcional</Label>
+
+        {/* Lista de archivos seleccionados */}
+        {files.length > 0 && (
+          <ul className="space-y-1">
+            {files.map((f, i) => (
+              <li
+                key={i}
+                className="flex items-center gap-2 rounded-md border bg-background px-2 py-1.5 text-xs"
+              >
+                {f.type.startsWith("image/") ? (
+                  <ImageIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                ) : (
+                  <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                )}
+                <span className="min-w-0 flex-1 truncate">{f.name}</span>
+                <span className="shrink-0 text-muted-foreground">
+                  {(f.size / 1024).toFixed(0)} KB
+                </span>
+                <button
+                  type="button"
+                  onClick={() => removeFile(i)}
+                  disabled={saving}
+                  className="shrink-0 text-muted-foreground hover:text-destructive"
+                  title="Quitar archivo"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* Botón de selección */}
+        <label className={`inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-muted ${saving ? "pointer-events-none opacity-50" : ""}`}>
+          <Paperclip className="h-3.5 w-3.5" />
+          {files.length > 0 ? "Añadir más archivos" : "Adjuntar fotos o PDF"}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.heic,.heif,application/pdf"
+            multiple
+            className="hidden"
+            disabled={saving}
+            onChange={(e) => addFiles(e.target.files)}
+          />
+        </label>
+      </div>
+
+      {/* Botón enviar */}
+      <div className="flex items-center gap-3">
         <Button size="sm" onClick={handleCreate} disabled={saving || !title.trim()}>
-          {saving ? "Creando..." : "Crear modificación"}
+          {saving ? (statusMsg || "Enviando...") : "Crear modificación"}
         </Button>
       </div>
+
       <p className="text-xs text-muted-foreground">
         {currentRole === "client"
           ? "Una vez creada, el equipo de Soltegra deberá aprobarla o rechazarla."
