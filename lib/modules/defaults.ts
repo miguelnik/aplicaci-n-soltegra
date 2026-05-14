@@ -124,7 +124,7 @@ export const GENERIC_SERVICE_DEFAULT: ServiceModuleConfig = [
   },
   {
     key: "pending_decisions",
-    label: "Decisiones pendientes",
+    label: "Modificaciones",
     is_active: true,
     visible_to: "both",
     order: 8,

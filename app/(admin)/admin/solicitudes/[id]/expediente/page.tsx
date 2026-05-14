@@ -19,13 +19,12 @@ import {
 } from "lucide-react";
 import { PhotoUploader } from "./PhotoUploader";
 import { EntityAttachments } from "@/components/modules/EntityAttachments";
+import { ModificationsModule } from "@/components/modules/ModificationsModule";
+import type { ModulePageData } from "@/lib/modules/types";
 import {
   saveMilestone,
   completeMilestone,
   deleteMilestone,
-  saveDecision,
-  deleteDecision,
-  updateDecisionStatus,
   saveIncident,
   deleteIncident,
   saveRisk,
@@ -47,7 +46,7 @@ import {
 
 const TABS = [
   { key: "milestones",      label: "Hitos" },
-  { key: "decisions",       label: "Decisiones" },
+  { key: "decisions",       label: "Modificaciones" },
   { key: "incidents",       label: "Incidencias" },
   { key: "risks",           label: "Riesgos" },
   { key: "site_visits",     label: "Visitas" },
@@ -153,6 +152,7 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
   const [
     { data: milestones },
     { data: decisions },
+    { data: modificationMessages },
     { data: incidents },
     { data: risks },
     { data: siteVisits },
@@ -164,6 +164,7 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
   ] = await Promise.all([
     admin.from("expedition_milestones").select("*").eq("request_id", requestId).order("order"),
     admin.from("expedition_decisions").select("*").eq("request_id", requestId).order("created_at"),
+    admin.from("modification_messages").select("*").eq("request_id", requestId).order("created_at"),
     admin.from("expedition_incidents").select("*").eq("request_id", requestId).order("created_at", { ascending: false }),
     admin.from("expedition_risks").select("*").eq("request_id", requestId).order("created_at"),
     admin.from("expedition_site_visits").select("*").eq("request_id", requestId).order("visited_at", { ascending: false }),
@@ -200,7 +201,6 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
 
   // ── Binders para Server Actions ──────────────────────────────────────────
   const saveMilestoneA   = saveMilestone.bind(null, requestId);
-  const saveDecisionA    = saveDecision.bind(null, requestId);
   const saveIncidentA    = saveIncident.bind(null, requestId);
   const saveRiskA        = saveRisk.bind(null, requestId);
   const saveSiteVisitA   = saveSiteVisit.bind(null, requestId);
@@ -335,96 +335,21 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
         </div>
       )}
 
-      {/* ── DECISIONES ────────────────────────────────────────────────────── */}
+      {/* ── MODIFICACIONES ───────────────────────────────────────────────── */}
       {activeTab === "decisions" && (
-        <div className="space-y-6">
-          <h2 className="text-lg font-semibold">Decisiones pendientes</h2>
-
-          <div className="space-y-2">
-            {(decisions ?? []).map((d) => {
-              const del = deleteDecision.bind(null, requestId, d.id);
-              const updateStatus = updateDecisionStatus.bind(null, requestId, d.id);
-              return (
-                <div key={d.id} className="flex items-start gap-2 rounded-lg border bg-card px-4 py-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium">{d.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {d.status}
-                      {d.deadline && ` · plazo: ${format(parseISO(d.deadline), "d MMM yyyy", { locale: es })}`}
-                      {!d.is_visible_to_client && " · oculta al cliente"}
-                    </p>
-                    {d.client_response && (
-                      <p className="mt-1 text-xs text-green-700">
-                        Resp. cliente: &ldquo;{d.client_response}&rdquo;
-                      </p>
-                    )}
-                    {d.description && (
-                      <p className="mt-1 whitespace-pre-line text-xs text-muted-foreground">
-                        {d.description}
-                      </p>
-                    )}
-                    <EntityAttachments
-                      requestId={requestId}
-                      entityType="decision"
-                      entityId={d.id}
-                      attachments={attachmentsFor("decision", d.id)}
-                      canUpload
-                      compact
-                    />
-                  </div>
-                  <form action={updateStatus} className="flex items-center gap-1">
-                    <Select name="status" defaultValue={d.status} options={[
-                      { value: "pending", label: "Pendiente" },
-                      { value: "approved", label: "Aprobado" },
-                      { value: "rejected", label: "Rechazado" },
-                      { value: "deferred", label: "Aplazado" },
-                    ]} />
-                    <Button type="submit" size="sm" variant="outline">Guardar</Button>
-                  </form>
-                  <form action={del}>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" type="submit">
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </form>
-                </div>
-              );
-            })}
-            {(decisions ?? []).length === 0 && (
-              <p className="text-sm text-muted-foreground">Sin decisiones todavía.</p>
-            )}
-          </div>
-
-          <form action={saveDecisionA} className="rounded-lg border p-4 space-y-3">
-            <p className="text-sm font-semibold flex items-center gap-1.5">
-              <Plus className="h-4 w-4" /> Nueva decisión
-            </p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Título" required>
-                <Input name="title" required placeholder="¿Qué debe decidir el cliente?" />
-              </Field>
-              <Field label="Plazo de respuesta">
-                <Input name="deadline" type="date" />
-              </Field>
-              <Field label="Estado">
-                <Select name="status" defaultValue="pending" options={[
-                  { value: "pending",  label: "Pendiente" },
-                  { value: "approved", label: "Aprobado" },
-                  { value: "rejected", label: "Rechazado" },
-                  { value: "deferred", label: "Aplazado" },
-                ]} />
-              </Field>
-              <div className="sm:col-span-2">
-                <Field label="Descripción">
-                  <Textarea name="description" rows={2} placeholder="Contexto o detalles..." />
-                </Field>
-              </div>
-              <div className="sm:col-span-2">
-                <VisibleCheck />
-              </div>
-            </div>
-            <Button type="submit" size="sm">Guardar decisión</Button>
-          </form>
-        </div>
+        <ModificationsModule
+          module={{ key: "pending_decisions", label: "Modificaciones", is_active: true, visible_to: "both", order: 0 }}
+          data={{
+            req: { id: requestId } as ModulePageData["req"],
+            decisions: (decisions ?? []).map((d) => ({
+              ...d,
+              attachments: attachmentsFor("decision", d.id),
+            })) as ModulePageData["decisions"],
+            modificationMessages: (modificationMessages ?? []) as ModulePageData["modificationMessages"],
+            photos: photos as ModulePageData["photos"],
+          } as ModulePageData}
+          currentRole="admin"
+        />
       )}
 
       {/* ── INCIDENCIAS ───────────────────────────────────────────────────── */}
