@@ -88,8 +88,8 @@ export const MODULE_CATALOG: ModuleMeta[] = [
   },
   {
     key: "pending_decisions",
-    defaultLabel: "Decisiones pendientes",
-    description: "Decisiones que requieren respuesta o acción del cliente.",
+    defaultLabel: "Modificaciones",
+    description: "Solicitudes de cambio del proyecto. Tanto el cliente como el equipo pueden crearlas y deben ser aprobadas por la otra parte.",
     defaultVisibility: "both",
     implemented: true,
     group: "documentation",

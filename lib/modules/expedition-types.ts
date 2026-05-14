@@ -27,21 +27,41 @@ export interface ExpeditionMilestone {
   updated_at: string;
 }
 
-// ── Decisiones ───────────────────────────────────────────────────────────────
+// ── Modificaciones (antes: Decisiones) ───────────────────────────────────────
 
 export interface ExpeditionDecision {
   id: string;
   request_id: string;
   title: string;
   description: string | null;
-  deadline: string | null;          // ISO date YYYY-MM-DD
+  deadline: string | null;              // ISO date YYYY-MM-DD (legacy)
   status: DecisionStatus;
-  client_response: string | null;
-  client_responded_at: string | null;
+  client_response: string | null;       // legacy
+  client_responded_at: string | null;   // legacy
   is_visible_to_client: boolean;
   created_at: string;
   updated_at: string;
+  // Campos de workflow de modificaciones (0013)
+  requested_by_id: string | null;
+  requested_by_role: "client" | "admin" | null;
+  cost: number | null;
+  approved_at: string | null;
+  approved_by_id: string | null;
+  rejected_at: string | null;
+  rejected_by_id: string | null;
   attachments?: ExpeditionAttachment[];
+}
+
+// ── Mensajes de modificación (conversación por modificación) ─────────────────
+
+export interface ModificationMessage {
+  id: string;
+  modification_id: string;
+  request_id: string;
+  author_id: string | null;
+  author_role: "client" | "admin";
+  body: string;
+  created_at: string;
 }
 
 // ── Incidencias ──────────────────────────────────────────────────────────────
@@ -149,6 +169,9 @@ export interface ExpeditionPhoto {
   uploaded_by: string | null;
   uploaded_by_role: "admin" | "client";
   uploaded_at: string;
+  // Trazabilidad de origen (0013)
+  source_entity_type: "modification" | "site_visit" | null;
+  source_entity_id: string | null;
   signedUrl?: string | null;  // generada en runtime
 }
 

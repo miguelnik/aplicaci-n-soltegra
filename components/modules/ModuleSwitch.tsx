@@ -13,7 +13,7 @@ import { DeliverablesModule } from "./DeliverablesModule";
 import { DocumentsModule } from "./DocumentsModule";
 import { PaymentStatusModule } from "./PaymentStatusModule";
 import { MilestonesModule } from "./MilestonesModule";
-import { PendingDecisionsModule } from "./PendingDecisionsModule";
+import { ModificationsModule } from "./ModificationsModule";
 import { IncidentsModule } from "./IncidentsModule";
 import { RisksModule } from "./RisksModule";
 import { ConstructionDashboardModule } from "./ConstructionDashboardModule";
@@ -73,7 +73,7 @@ export function ModuleSwitch({ module, data, currentRole }: Props) {
 
     case "pending_decisions":
       return (
-        <PendingDecisionsModule
+        <ModificationsModule
           module={module}
           data={data}
           currentRole={currentRole}

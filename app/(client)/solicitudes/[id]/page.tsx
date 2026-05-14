@@ -80,6 +80,7 @@ export default async function SolicitudDetallePage({ params }: Props) {
   const [
     { data: rawMilestones },
     { data: rawDecisions },
+    { data: rawModificationMessages },
     { data: rawIncidents },
     { data: rawRisks },
     { data: rawSiteVisits },
@@ -91,6 +92,7 @@ export default async function SolicitudDetallePage({ params }: Props) {
   ] = await Promise.all([
     supabase.from("expedition_milestones").select("*").eq("request_id", id).order("order"),
     supabase.from("expedition_decisions").select("*").eq("request_id", id).order("created_at"),
+    supabase.from("modification_messages").select("*").eq("request_id", id).order("created_at"),
     supabase.from("expedition_incidents").select("*").eq("request_id", id).order("created_at", { ascending: false }),
     supabase.from("expedition_risks").select("*").eq("request_id", id).order("created_at"),
     supabase.from("expedition_site_visits").select("*").eq("request_id", id).order("visited_at", { ascending: false }),
@@ -188,6 +190,7 @@ export default async function SolicitudDetallePage({ params }: Props) {
       ...d,
       attachments: attachmentsFor("decision", d.id),
     })) as import("@/lib/modules/expedition-types").ExpeditionDecision[],
+    modificationMessages: (rawModificationMessages ?? []) as import("@/lib/modules/expedition-types").ModificationMessage[],
     incidents:      (rawIncidents ?? []).map((i) => ({
       ...i,
       attachments: attachmentsFor("incident", i.id),

@@ -126,6 +126,7 @@ export interface ModulePageData {
   // ── Módulos de gestión de proyecto y dirección de obra ────────────────────
   milestones: import("@/lib/modules/expedition-types").ExpeditionMilestone[];
   decisions: import("@/lib/modules/expedition-types").ExpeditionDecision[];
+  modificationMessages: import("@/lib/modules/expedition-types").ModificationMessage[];
   incidents: import("@/lib/modules/expedition-types").ExpeditionIncident[];
   risks: import("@/lib/modules/expedition-types").ExpeditionRisk[];
   siteVisits: import("@/lib/modules/expedition-types").ExpeditionSiteVisit[];

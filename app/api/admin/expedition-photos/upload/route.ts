@@ -33,6 +33,9 @@ export async function POST(request: Request) {
     const caption = (formData.get("caption") as string | null)?.trim() || null;
     const takenAt = (formData.get("takenAt") as string | null)?.trim() || null;
     const visibleToClient = formData.get("visibleToClient") !== "0";
+    // Trazabilidad: entidad origen de la foto (opcional)
+    const sourceEntityType = (formData.get("sourceEntityType") as string | null) || null;
+    const sourceEntityId   = (formData.get("sourceEntityId")   as string | null) || null;
 
     if (!file || !requestId) {
       return NextResponse.json(
@@ -102,7 +105,9 @@ export async function POST(request: Request) {
       taken_at: takenAt || null,
       is_visible_to_client: isAdmin ? visibleToClient : true,
       uploaded_by: user.id,
-      uploaded_by_role: isAdmin ? "admin" : profile.role,
+      uploaded_by_role: isAdmin ? "admin" : "client",
+      source_entity_type: sourceEntityType || null,
+      source_entity_id:   sourceEntityId   || null,
     });
 
     if (dbError) {
