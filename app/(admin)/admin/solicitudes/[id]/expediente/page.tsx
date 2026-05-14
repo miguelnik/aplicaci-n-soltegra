@@ -140,8 +140,8 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
   const supabase = await createSupabaseServerClient();
   const admin = createSupabaseAdminClient();
 
-  // Solicitud base
-  const { data: req } = await supabase
+  // Solicitud base — usar admin client para bypasear RLS
+  const { data: req } = await admin
     .from("certificate_requests")
     .select("id, reference_code, property_address, organization_id")
     .eq("id", requestId)

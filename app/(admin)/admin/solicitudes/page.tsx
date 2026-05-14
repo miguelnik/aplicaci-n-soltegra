@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getActiveServices } from "@/lib/services";
 import { StatusBadge } from "@/components/client/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -25,11 +26,13 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
   await requireAdmin();
   const { status, service: serviceSlug } = await searchParams;
   const supabase = await createSupabaseServerClient();
+  const adminClient = createSupabaseAdminClient();
 
   const services = await getActiveServices();
   const selectedService = serviceSlug ? services.find((s) => s.slug === serviceSlug) : null;
 
-  let query = supabase
+  // Usar admin client para bypasear RLS y que el superadmin vea todas las solicitudes
+  let query = adminClient
     .from("certificate_requests")
     .select(`id, reference_code, property_address, status, created_at, estimated_delivery_date, client_deadline, is_paid, organizations(name), service_types(name), assigned:assigned_to(full_name)`)
     .order("created_at", { ascending: false })
@@ -44,7 +47,7 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
   const requestIds = (requests ?? []).map((r) => r.id);
   let clientMessageIds = new Set<string>();
   if (requestIds.length > 0) {
-    const { data: msgs } = await supabase
+    const { data: msgs } = await adminClient
       .from("request_messages")
       .select("request_id, author_role, created_at")
       .in("request_id", requestIds)

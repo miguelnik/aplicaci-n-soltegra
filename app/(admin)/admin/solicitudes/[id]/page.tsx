@@ -103,7 +103,8 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
   const supabase = await createSupabaseServerClient();
   const admin = createSupabaseAdminClient();
 
-  const { data: req } = await supabase
+  // Usar admin client (service_role) para bypasear RLS en páginas de admin
+  const { data: req } = await admin
     .from("certificate_requests")
     .select(`
       *,
@@ -118,7 +119,7 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
   if (!req) notFound();
 
   // Archivos del formulario inicial (request_files)
-  const { data: files } = await supabase
+  const { data: files } = await admin
     .from("request_files")
     .select("id, field_key, original_filename, mime_type, size_bytes, storage_path, uploaded_at")
     .eq("request_id", id)
