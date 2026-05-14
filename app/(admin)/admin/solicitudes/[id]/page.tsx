@@ -28,6 +28,7 @@ import { MessageThread } from "@/components/messages/MessageThread";
 import { getRequestMessages } from "@/lib/messages";
 import { ExpeditionDocUploader } from "./ExpeditionDocUploader";
 import { PhaseChanger } from "./PhaseChanger";
+import { DeleteAdminRequestButton } from "./DeleteAdminRequestButton";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Server Actions
@@ -423,6 +424,14 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
               </CardContent>
             </Card>
           )}
+
+          {/* Zona de peligro */}
+          <div className="border-t pt-2">
+            <DeleteAdminRequestButton
+              requestId={req.id}
+              referenceCode={req.reference_code ?? null}
+            />
+          </div>
         </div>
       </div>
     </div>

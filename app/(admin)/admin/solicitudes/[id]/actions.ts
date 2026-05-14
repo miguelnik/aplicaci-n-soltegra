@@ -1,9 +1,11 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendCertificadoListo } from "@/lib/email/send";
+import { deleteRequestCompletely } from "@/lib/delete-request";
 
 /**
  * Server action de fallback para cambio de estado.
@@ -68,4 +70,24 @@ export async function updateStatus(
     const message = err instanceof Error ? err.message : String(err);
     return { ok: false, error: message };
   }
+}
+
+/**
+ * Elimina completamente una solicitud (admin/superadmin).
+ * Limpia Storage y borra la fila; el CASCADE elimina todos los datos hijos.
+ */
+export async function deleteAdminRequest(requestId: string): Promise<void> {
+  await requireAdmin();
+  const admin = createSupabaseAdminClient();
+
+  const { data: req } = await admin
+    .from("certificate_requests")
+    .select("id, certificate_pdf_path")
+    .eq("id", requestId)
+    .single();
+
+  if (!req) throw new Error("Solicitud no encontrada");
+
+  await deleteRequestCompletely(requestId, req.certificate_pdf_path ?? null);
+  redirect("/admin/solicitudes");
 }
