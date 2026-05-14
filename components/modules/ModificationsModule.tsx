@@ -49,6 +49,107 @@ function requesterLabel(role: "client" | "admin" | null) {
   return "Solicitado por el equipo";
 }
 
+// ── Editor inline de coste ───────────────────────────────────────────────────
+
+function CostEditor({
+  modId,
+  currentCost,
+  locked,
+}: {
+  modId: string;
+  currentCost: number | null;
+  locked: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue]     = useState(currentCost != null ? String(currentCost) : "");
+  const [saving, setSaving]   = useState(false);
+
+  async function save() {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/modifications/${modId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cost: value !== "" ? parseFloat(value) : null }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error ?? "Error al guardar");
+      toast.success("Coste actualizado");
+      setEditing(false);
+      window.location.reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error inesperado");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (locked) {
+    // Solo muestra, no edita
+    return currentCost != null ? (
+      <p className="flex items-center gap-1 text-sm text-muted-foreground">
+        <Euro className="h-3.5 w-3.5" />
+        Coste:{" "}
+        <span className="font-medium text-foreground">
+          {currentCost.toLocaleString("es-ES", { minimumFractionDigits: 2 })} €
+        </span>
+      </p>
+    ) : null;
+  }
+
+  if (!editing) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Euro className="h-3.5 w-3.5 shrink-0" />
+        {currentCost != null ? (
+          <span>
+            Coste:{" "}
+            <span className="font-medium text-foreground">
+              {currentCost.toLocaleString("es-ES", { minimumFractionDigits: 2 })} €
+            </span>
+          </span>
+        ) : (
+          <span className="italic">Sin coste asignado</span>
+        )}
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="ml-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          Editar
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Euro className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      <Input
+        type="number"
+        min="0"
+        step="0.01"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="0.00"
+        className="h-7 w-36 text-sm"
+        disabled={saving}
+        autoFocus
+        onKeyDown={(e) => {
+          if (e.key === "Enter") save();
+          if (e.key === "Escape") setEditing(false);
+        }}
+      />
+      <Button size="sm" className="h-7 text-xs" onClick={save} disabled={saving}>
+        {saving ? "..." : "Guardar"}
+      </Button>
+      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditing(false)} disabled={saving}>
+        Cancelar
+      </Button>
+    </div>
+  );
+}
+
 // ── Tarjeta de modificación ───────────────────────────────────────────────────
 
 function ModificationCard({
@@ -183,6 +284,9 @@ function ModificationCard({
           {mod.description && (
             <p className="text-sm text-muted-foreground whitespace-pre-line">{mod.description}</p>
           )}
+
+          {/* Coste editable */}
+          <CostEditor modId={mod.id} currentCost={mod.cost} locked={locked} />
 
           {/* Fotos en esta modificación */}
           {modPhotos.length > 0 && (
