@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       .eq("id", user.id)
       .single();
 
-    if (!profile || profile.role !== "admin") {
+    if (!profile || (profile.role !== "admin" && profile.role !== "superadmin")) {
       return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
     }
 

@@ -44,12 +44,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: "Sin perfil" }, { status: 403 });
     }
 
+    // Normalizar superadmin a "admin" para la columna author_role
+    const authorRole = profile.role === "superadmin" ? "admin" : profile.role;
+
     const { data, error } = await supabase
       .from("request_messages")
       .insert({
         request_id: requestId,
         author_id: user.id,
-        author_role: profile.role,
+        author_role: authorRole,
         body: body.trim(),
       })
       .select("id, created_at")
@@ -74,7 +77,7 @@ export async function POST(request: NextRequest) {
       if (req) {
         const authorName =
           (await supabase.from("profiles").select("full_name").eq("id", user.id).single())
-            .data?.full_name ?? (profile.role === "admin" ? "Soltegra" : "Cliente");
+            .data?.full_name ?? (authorRole === "admin" ? "Soltegra" : "Cliente");
 
         // Email del cliente propietario (via auth.admin)
         let clientEmail = "";

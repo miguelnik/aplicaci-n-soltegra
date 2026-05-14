@@ -63,7 +63,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Solicitud no encontrada" }, { status: 404 });
     }
 
-    if (profile.role !== "admin" && req.organization_id !== profile.organization_id) {
+    const isAdmin = profile.role === "admin" || profile.role === "superadmin";
+    if (!isAdmin && req.organization_id !== profile.organization_id) {
       return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
     }
 
@@ -99,9 +100,9 @@ export async function POST(request: Request) {
       size_bytes: file.size,
       caption,
       taken_at: takenAt || null,
-      is_visible_to_client: profile.role === "admin" ? visibleToClient : true,
+      is_visible_to_client: isAdmin ? visibleToClient : true,
       uploaded_by: user.id,
-      uploaded_by_role: profile.role,
+      uploaded_by_role: isAdmin ? "admin" : profile.role,
     });
 
     if (dbError) {
