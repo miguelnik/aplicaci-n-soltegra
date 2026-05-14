@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { StatusPhasesEditor } from "@/components/admin/StatusPhasesEditor";
 import { ArrowLeft, FileText, Trash2, LayoutDashboard } from "lucide-react";
 
 async function updateService(serviceId: string, formData: FormData) {
@@ -129,6 +130,14 @@ export default async function EditarServicioPage({ params, searchParams }: Props
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">
+        {/* Editor de fases — ocupa la fila completa */}
+        <div className="lg:col-span-2">
+          <StatusPhasesEditor
+            serviceId={id}
+            initialPhases={service.status_phases ?? []}
+          />
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Datos del servicio</CardTitle>

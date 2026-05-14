@@ -28,7 +28,7 @@ export default async function SolicitudDetallePage({ params }: Props) {
     .select(`
       *,
       form_schemas(schema),
-      service_types(name, slug, module_config)
+      service_types(name, slug, module_config, status_phases)
     `)
     .eq("id", id)
     .eq("organization_id", profile.organization_id!)
@@ -134,11 +134,14 @@ export default async function SolicitudDetallePage({ params }: Props) {
     attachments.filter((a) => a.entity_type === entityType && a.entity_id === entityId);
 
   // ── 5. Configuración de módulos para este tipo de servicio ───────────────
-  const serviceSlug =
-    (req.service_types as unknown as { slug: string } | null)?.slug ?? "";
-  const rawModuleConfig =
-    (req.service_types as unknown as { module_config: ServiceModuleConfig | null } | null)
-      ?.module_config ?? null;
+  const serviceType = req.service_types as unknown as {
+    slug: string;
+    module_config: ServiceModuleConfig | null;
+    status_phases: Array<{ key: string; label: string; description?: string }> | null;
+  } | null;
+  const serviceSlug = serviceType?.slug ?? "";
+  const rawModuleConfig = serviceType?.module_config ?? null;
+  const statusPhases = serviceType?.status_phases ?? [];
 
   const allModules = getEffectiveModules(serviceSlug, rawModuleConfig);
   const clientModules = filterModulesForRole(allModules, "client");
@@ -171,7 +174,10 @@ export default async function SolicitudDetallePage({ params }: Props) {
       client_deadline: req.client_deadline ?? null,
       organization_id: req.organization_id,
       created_at: req.created_at,
+      current_phase_key: (req.current_phase_key as string | null) ?? null,
+      assigned_to: (req.assigned_to as string | null) ?? null,
     },
+    statusPhases,
     schema,
     filesWithUrls,
     messages,

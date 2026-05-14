@@ -11,13 +11,20 @@ import { SubmitButton } from "@/components/ui/submit-button";
 
 async function createUser(formData: FormData) {
   "use server";
-  await requireAdmin();
+  const cp = await requireAdmin();
+  const isSuperAdmin = cp.role === "superadmin";
 
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
   const fullName = formData.get("full_name") as string;
   const orgId = formData.get("organization_id") as string;
-  const role = (formData.get("role") as string) || "client";
+  const rawRole = (formData.get("role") as string) || "client";
+
+  // Solo superadmin puede crear admins o superadmins
+  const role: "client" | "admin" | "superadmin" =
+    isSuperAdmin && (rawRole === "admin" || rawRole === "superadmin")
+      ? rawRole
+      : "client";
 
   if (!password || password.length < 6) {
     redirect("/admin/usuarios/invitar?error=" + encodeURIComponent("La contraseña debe tener al menos 6 caracteres"));
@@ -38,8 +45,8 @@ async function createUser(formData: FormData) {
 
   const { error: profileError } = await adminClient.from("profiles").upsert({
     id: userData.user.id,
-    organization_id: role === "admin" ? null : orgId || null,
-    role: role as "admin" | "client",
+    organization_id: role === "client" ? (orgId || null) : null,
+    role,
     full_name: fullName || null,
   });
 
@@ -55,7 +62,8 @@ interface Props {
 }
 
 export default async function CrearUsuarioPage({ searchParams }: Props) {
-  await requireAdmin();
+  const currentProfile = await requireAdmin();
+  const isSuperAdmin = currentProfile.role === "superadmin";
   const { org: preselectedOrg, error } = await searchParams;
   const supabase = await createSupabaseServerClient();
 
@@ -130,8 +138,18 @@ export default async function CrearUsuarioPage({ searchParams }: Props) {
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="client">Cliente</option>
-                <option value="admin">Admin Soltegra</option>
+                {isSuperAdmin && (
+                  <>
+                    <option value="admin">Admin Soltegra</option>
+                    <option value="superadmin">Superadministrador</option>
+                  </>
+                )}
               </select>
+              {!isSuperAdmin && (
+                <p className="text-xs text-muted-foreground">
+                  Solo puedes crear clientes. Contacta con un superadmin para crear administradores.
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="organization_id">
@@ -143,7 +161,7 @@ export default async function CrearUsuarioPage({ searchParams }: Props) {
                 defaultValue={preselectedOrg ?? ""}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <option value="">Sin organización (admin)</option>
+                <option value="">Sin organización (admin/superadmin)</option>
                 {orgs?.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.name}

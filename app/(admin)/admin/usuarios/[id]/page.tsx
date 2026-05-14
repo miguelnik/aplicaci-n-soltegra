@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft } from "lucide-react";
-
+import { ArrowLeft, ShieldAlert } from "lucide-react";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -16,9 +15,11 @@ interface Props {
 }
 
 export default async function EditarUsuarioPage({ params, searchParams }: Props) {
-  await requireAdmin();
+  const currentProfile = await requireAdmin();
   const { id } = await params;
   const { error, pwok } = await searchParams;
+
+  const isSuperAdmin = currentProfile.role === "superadmin";
 
   const supabase = await createSupabaseServerClient();
   const adminClient = createSupabaseAdminClient();
@@ -35,16 +36,28 @@ export default async function EditarUsuarioPage({ params, searchParams }: Props)
 
   if (!profile) notFound();
 
+  // Un admin normal no puede editar a otros admins ni superadmins
+  const targetIsPrivileged = profile.role === "admin" || profile.role === "superadmin";
+  if (!isSuperAdmin && targetIsPrivileged) {
+    redirect("/admin/usuarios?error=" + encodeURIComponent("No tienes permiso para editar a este usuario"));
+  }
+
   const email = authData?.user?.email ?? "—";
 
   async function handleUpdate(formData: FormData) {
     "use server";
-    await requireAdmin();
+    const cp = await requireAdmin();
+    const isSA = cp.role === "superadmin";
 
     const fullName = formData.get("full_name") as string;
     const phone = formData.get("phone") as string;
-    const role = formData.get("role") as "admin" | "client";
+    const rawRole = formData.get("role") as string;
     const orgId = formData.get("organization_id") as string;
+
+    // Solo superadmin puede asignar roles admin/superadmin
+    const role = isSA
+      ? (rawRole as "admin" | "client" | "superadmin")
+      : "client";
 
     const supabase = await createSupabaseServerClient();
     const { error } = await supabase
@@ -53,7 +66,7 @@ export default async function EditarUsuarioPage({ params, searchParams }: Props)
         full_name: fullName || null,
         phone: phone || null,
         role,
-        organization_id: orgId || null,
+        organization_id: role === "client" ? (orgId || null) : null,
       })
       .eq("id", id);
 
@@ -85,12 +98,29 @@ export default async function EditarUsuarioPage({ params, searchParams }: Props)
 
   async function handleDelete() {
     "use server";
-    await requireAdmin();
+    const cp = await requireAdmin();
 
     const currentProfile = await getCurrentProfile();
     if (currentProfile?.id === id) {
       redirect(
         `/admin/usuarios/${id}?error=${encodeURIComponent("No puedes eliminar tu propia cuenta")}`,
+      );
+    }
+
+    // Sólo superadmin puede eliminar admins y superadmins
+    const { data: targetProfile } = await (await createSupabaseServerClient())
+      .from("profiles")
+      .select("role")
+      .eq("id", id)
+      .single();
+
+    const targetRole = targetProfile?.role;
+    if (
+      (targetRole === "admin" || targetRole === "superadmin") &&
+      cp.role !== "superadmin"
+    ) {
+      redirect(
+        `/admin/usuarios/${id}?error=${encodeURIComponent("Solo un superadmin puede eliminar administradores")}`,
       );
     }
 
@@ -116,6 +146,14 @@ export default async function EditarUsuarioPage({ params, searchParams }: Props)
           <p className="text-sm text-muted-foreground">{email}</p>
         </div>
       </div>
+
+      {/* Aviso si el usuario es superadmin */}
+      {profile.role === "superadmin" && (
+        <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <ShieldAlert className="h-4 w-4 shrink-0" />
+          Este usuario es <strong>Superadministrador</strong>. Edita con precaución.
+        </div>
+      )}
 
       {error && (
         <div className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -173,11 +211,20 @@ export default async function EditarUsuarioPage({ params, searchParams }: Props)
                 id="role"
                 name="role"
                 defaultValue={profile.role}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                disabled={!isSuperAdmin}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
               >
                 <option value="client">Cliente</option>
                 <option value="admin">Admin Soltegra</option>
+                {isSuperAdmin && (
+                  <option value="superadmin">Superadministrador</option>
+                )}
               </select>
+              {!isSuperAdmin && (
+                <p className="text-xs text-muted-foreground">
+                  Solo un superadmin puede cambiar el rol.
+                </p>
+              )}
             </div>
             <div className="flex gap-3 pt-2">
               <Button type="submit" className="flex-1">
@@ -226,11 +273,17 @@ export default async function EditarUsuarioPage({ params, searchParams }: Props)
             Eliminar este usuario borra su cuenta y acceso permanentemente. Sus solicitudes
             quedan registradas en el sistema.
           </p>
-          <form action={handleDelete}>
-            <Button type="submit" variant="destructive" className="w-full">
-              Eliminar usuario
-            </Button>
-          </form>
+          {(profile.role === "admin" || profile.role === "superadmin") && !isSuperAdmin ? (
+            <p className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+              Solo un superadministrador puede eliminar administradores.
+            </p>
+          ) : (
+            <form action={handleDelete}>
+              <Button type="submit" variant="destructive" className="w-full">
+                Eliminar usuario
+              </Button>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>

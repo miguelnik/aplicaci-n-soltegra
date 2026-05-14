@@ -107,7 +107,13 @@ export interface ModulePageData {
     client_deadline: string | null;
     organization_id: string;
     created_at: string;
+    /** Fase actual del proyecto (clave de la fase activa en status_phases del servicio) */
+    current_phase_key: string | null;
+    /** UUID del trabajador asignado a la solicitud */
+    assigned_to: string | null;
   };
+  /** Fases configuradas en el servicio (de service_types.status_phases) */
+  statusPhases: Array<{ key: string; label: string; description?: string }>;
   // Schema del formulario inicial (de form_schemas)
   schema: import("@/lib/form-schema/types").FormSchema | null;
   // Archivos del cliente con URLs firmadas

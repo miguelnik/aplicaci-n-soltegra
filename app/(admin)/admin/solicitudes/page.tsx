@@ -31,7 +31,7 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
 
   let query = supabase
     .from("certificate_requests")
-    .select(`id, reference_code, property_address, status, created_at, estimated_delivery_date, client_deadline, is_paid, organizations(name), service_types(name)`)
+    .select(`id, reference_code, property_address, status, created_at, estimated_delivery_date, client_deadline, is_paid, organizations(name), service_types(name), assigned:assigned_to(full_name)`)
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -133,6 +133,7 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
               <th className="hidden px-4 py-3 text-left font-medium md:table-cell">Servicio</th>
               <th className="px-4 py-3 text-left font-medium">Dirección</th>
               <th className="px-4 py-3 text-left font-medium">Estado</th>
+              <th className="px-4 py-3 text-left font-medium">Asignado</th>
               <th className="px-4 py-3 text-left font-medium">Pago</th>
               <th className="px-4 py-3 text-left font-medium">Fecha</th>
               <th className="px-4 py-3 text-center font-medium" title="Mensajes del cliente">💬</th>
@@ -161,6 +162,11 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
                 </td>
                 <td className="px-4 py-3">
                   <StatusBadge status={r.status} />
+                </td>
+                <td className="px-4 py-3 text-xs text-muted-foreground">
+                  {(r.assigned as unknown as { full_name: string | null } | null)?.full_name ?? (
+                    <span className="opacity-40">—</span>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   {r.status !== "draft" && r.status !== "cancelled" && (

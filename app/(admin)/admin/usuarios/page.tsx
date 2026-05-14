@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, getCurrentProfile } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,17 @@ interface Props {
   searchParams: Promise<{ updated?: string; deleted?: string; invited?: string }>;
 }
 
+const ROLE_LABEL: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
+  superadmin: { label: "Superadmin",    variant: "destructive" },
+  admin:      { label: "Admin",         variant: "default" },
+  client:     { label: "Cliente",       variant: "secondary" },
+};
+
 export default async function UsuariosPage({ searchParams }: Props) {
-  await requireAdmin();
+  const currentProfile = await requireAdmin();
+  await getCurrentProfile();
   const params = await searchParams;
+  const isSuperAdmin = currentProfile.role === "superadmin";
 
   const supabase = await createSupabaseServerClient();
   const adminClient = createSupabaseAdminClient();
@@ -49,6 +57,12 @@ export default async function UsuariosPage({ searchParams }: Props) {
         </Button>
       </div>
 
+      {!isSuperAdmin && (
+        <div className="rounded-md border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-800">
+          Como administrador solo puedes editar y eliminar usuarios clientes. Para gestionar administradores, contacta con un superadministrador.
+        </div>
+      )}
+
       {successMsg && (
         <div className="rounded-md bg-green-50 px-4 py-3 text-sm text-green-700 border border-green-200">
           {successMsg}
@@ -68,35 +82,47 @@ export default async function UsuariosPage({ searchParams }: Props) {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {profiles?.map((p) => (
-              <tr key={p.id} className="hover:bg-muted/30">
-                <td className="px-4 py-3 font-medium">{p.full_name ?? "—"}</td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {emailMap.get(p.id) ?? "—"}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {(p.organizations as unknown as { name: string } | null)?.name ?? (
-                    <span className="italic">Admin Soltegra</span>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <Badge variant={p.role === "admin" ? "default" : "secondary"}>
-                    {p.role === "admin" ? "Admin" : "Cliente"}
-                  </Badge>
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {format(new Date(p.created_at), "dd/MM/yyyy")}
-                </td>
-                <td className="px-4 py-3">
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link href={`/admin/usuarios/${p.id}`}>
-                      <Pencil className="h-3.5 w-3.5" />
-                      Editar
-                    </Link>
-                  </Button>
-                </td>
-              </tr>
-            ))}
+            {profiles?.map((p) => {
+              const roleCfg = ROLE_LABEL[p.role] ?? ROLE_LABEL.client;
+              // Un admin normal no puede editar a otros admins ni superadmins
+              const canEdit = isSuperAdmin || p.role === "client";
+
+              return (
+                <tr key={p.id} className="hover:bg-muted/30">
+                  <td className="px-4 py-3 font-medium">{p.full_name ?? "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {emailMap.get(p.id) ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {(p.organizations as unknown as { name: string } | null)?.name ?? (
+                      <span className="italic text-muted-foreground/60">
+                        {p.role === "superadmin" ? "Superadmin" : "Admin Soltegra"}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge variant={roleCfg.variant}>{roleCfg.label}</Badge>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {format(new Date(p.created_at), "dd/MM/yyyy")}
+                  </td>
+                  <td className="px-4 py-3">
+                    {canEdit ? (
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/admin/usuarios/${p.id}`}>
+                          <Pencil className="h-3.5 w-3.5" />
+                          Editar
+                        </Link>
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-muted-foreground/50 px-2">
+                        Solo superadmin
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         {!profiles?.length && (

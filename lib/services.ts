@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ServiceModuleConfig } from "@/lib/modules/types";
+import type { StatusPhase } from "@/components/admin/StatusPhasesEditor";
 
 export { nameToSlug } from "./slug";
 
@@ -16,6 +17,11 @@ export interface ServiceType {
    * Si es null, se usa la configuración por defecto definida en lib/modules/defaults.ts.
    */
   module_config: ServiceModuleConfig | null;
+  /**
+   * Fases del proyecto visibles para el cliente en el timeline de estado.
+   * Si está vacío [], se usa el timeline genérico de estados del sistema.
+   */
+  status_phases: StatusPhase[];
   created_at: string;
   updated_at: string;
 }

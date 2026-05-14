@@ -23,9 +23,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PaymentToggle } from "@/components/admin/PaymentToggle";
+import { AssignWorker } from "@/components/admin/AssignWorker";
 import { MessageThread } from "@/components/messages/MessageThread";
 import { getRequestMessages } from "@/lib/messages";
 import { ExpeditionDocUploader } from "./ExpeditionDocUploader";
+import { PhaseChanger } from "./PhaseChanger";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Server Actions
@@ -108,7 +110,7 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
       organizations(name, contact_email),
       profiles(full_name),
       form_schemas(schema),
-      service_types(name, slug)
+      service_types(name, slug, status_phases)
     `)
     .eq("id", id)
     .single();
@@ -139,8 +141,21 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
     }),
   );
 
+  // Trabajadores disponibles para asignación (admins + superadmins)
+  const { data: workers } = await admin
+    .from("profiles")
+    .select("id, full_name, role")
+    .in("role", ["admin", "superadmin"])
+    .order("full_name");
+
   const schema = (req.form_schemas as unknown as { schema: FormSchema })?.schema;
   const messages = await getRequestMessages(id);
+  const serviceType = req.service_types as unknown as {
+    name: string;
+    slug: string;
+    status_phases: Array<{ key: string; label: string; description?: string }>;
+  } | null;
+  const statusPhases = serviceType?.status_phases ?? [];
 
   return (
     <div className="space-y-6">
@@ -357,12 +372,24 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
 
         {/* ── Columna derecha: acciones admin ── */}
         <div className="space-y-4">
+          <AssignWorker
+            requestId={req.id}
+            currentAssignedTo={req.assigned_to ?? null}
+            workers={workers ?? []}
+          />
           <StatusChanger
             requestId={req.id}
             currentStatus={req.status}
             currentDeliveryDate={req.estimated_delivery_date}
             currentInternalNotes={req.internal_notes}
           />
+          {statusPhases.length > 0 && (
+            <PhaseChanger
+              requestId={req.id}
+              currentPhaseKey={req.current_phase_key ?? null}
+              phases={statusPhases}
+            />
+          )}
           {req.status !== "draft" && req.status !== "cancelled" && (
             <PaymentToggle
               requestId={req.id}

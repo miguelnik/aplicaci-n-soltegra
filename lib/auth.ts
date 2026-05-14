@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "./supabase/server";
 
-export type Role = "admin" | "client";
+export type Role = "admin" | "client" | "superadmin";
 
 export interface Profile {
   id: string;
@@ -42,13 +42,28 @@ export async function requireUser(): Promise<Profile> {
 }
 
 /**
- * Devuelve el perfil del admin autenticado o redirige.
+ * Devuelve el perfil del admin (o superadmin) autenticado o redirige.
  * Usar en páginas /admin/*.
  */
 export async function requireAdmin(): Promise<Profile> {
   const profile = await requireUser();
-  if (profile.role !== "admin") redirect("/dashboard");
+  if (profile.role !== "admin" && profile.role !== "superadmin") redirect("/dashboard");
   return profile;
+}
+
+/**
+ * Devuelve el perfil del superadmin autenticado o redirige.
+ * Usar en páginas que requieren privilegios de superadmin.
+ */
+export async function requireSuperAdmin(): Promise<Profile> {
+  const profile = await requireUser();
+  if (profile.role !== "superadmin") redirect("/admin/dashboard");
+  return profile;
+}
+
+/** Devuelve true si el perfil tiene rol admin o superadmin. */
+export function isAdminRole(role: Role): boolean {
+  return role === "admin" || role === "superadmin";
 }
 
 /**
