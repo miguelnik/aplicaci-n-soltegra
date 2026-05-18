@@ -102,6 +102,10 @@ export interface ModulePageData {
     form_data: Record<string, unknown>;
     is_paid: boolean;
     paid_at: string | null;
+    /** Precio acordado del servicio (en EUR) — sólo visible al admin */
+    price: number | null;
+    /** Si es true, el cliente nunca ve este expediente */
+    is_hidden_from_client: boolean;
     internal_notes: string | null;
     client_notes: string | null;
     client_deadline: string | null;

@@ -29,6 +29,7 @@ import { getRequestMessages } from "@/lib/messages";
 import { ExpeditionDocUploader } from "./ExpeditionDocUploader";
 import { PhaseChanger } from "./PhaseChanger";
 import { DeleteAdminRequestButton } from "./DeleteAdminRequestButton";
+import { ErpPanel } from "./ErpPanel";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Server Actions
@@ -380,6 +381,11 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
             requestId={req.id}
             currentAssignedTo={req.assigned_to ?? null}
             workers={workers ?? []}
+          />
+          <ErpPanel
+            requestId={req.id}
+            initialPrice={(req.price as number | null) ?? null}
+            initialHidden={(req.is_hidden_from_client as boolean | undefined) ?? false}
           />
           {statusPhases.length > 0 ? (
             <PhaseChanger

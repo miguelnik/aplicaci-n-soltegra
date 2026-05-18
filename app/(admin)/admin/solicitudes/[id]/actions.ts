@@ -73,6 +73,39 @@ export async function updateStatus(
 }
 
 /**
+ * Actualiza precio y/o visibilidad al cliente de una solicitud.
+ * Sólo admin/superadmin. Devuelve { ok, error } para que el formulario
+ * pueda mostrar feedback inline.
+ */
+export async function updateRequestErp(
+  requestId: string,
+  patch: { price?: number | null; is_hidden_from_client?: boolean },
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await requireAdmin();
+    const admin = createSupabaseAdminClient();
+
+    const payload: Record<string, unknown> = {};
+    if ("price" in patch) payload.price = patch.price;
+    if ("is_hidden_from_client" in patch) payload.is_hidden_from_client = patch.is_hidden_from_client;
+
+    if (Object.keys(payload).length === 0) {
+      return { ok: false, error: "Sin campos a actualizar" };
+    }
+
+    const { error } = await admin
+      .from("certificate_requests")
+      .update(payload)
+      .eq("id", requestId);
+
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/**
  * Elimina completamente una solicitud (admin/superadmin).
  * Limpia Storage y borra la fila; el CASCADE elimina todos los datos hijos.
  */

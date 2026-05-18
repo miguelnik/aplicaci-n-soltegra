@@ -171,6 +171,8 @@ export default async function SolicitudDetallePage({ params }: Props) {
       form_data: (req.form_data ?? {}) as Record<string, unknown>,
       is_paid: req.is_paid ?? false,
       paid_at: req.paid_at ?? null,
+      price: (req.price as number | null) ?? null,
+      is_hidden_from_client: (req.is_hidden_from_client as boolean | undefined) ?? false,
       internal_notes: req.internal_notes ?? null,
       client_notes: req.client_notes ?? null,
       client_deadline: req.client_deadline ?? null,
