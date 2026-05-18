@@ -10,9 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/client/StatusBadge";
 import { BillingTable } from "@/components/admin/BillingTable";
+import { FinanceEntriesTable } from "@/components/admin/FinanceEntriesTable";
+import { FinanceEntryForm } from "@/components/admin/FinanceEntryForm";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { format } from "date-fns";
-import { UserPlus, Trash2 } from "lucide-react";
+import { UserPlus, Trash2, Wallet } from "lucide-react";
+import type { FinanceEntry } from "@/lib/finance/types";
 
 async function updateOrg(orgId: string, formData: FormData) {
   "use server";
@@ -91,14 +94,45 @@ export default async function ClienteDetallePage({ params, searchParams }: Props
     .select("id, full_name, phone, role, created_at")
     .eq("organization_id", id);
 
-  // Traer TODAS las solicitudes para la tabla de facturación
-  const { data: allRequests } = await supabase
+  // Traer TODAS las solicitudes para la tabla de facturación (incluidas las ocultas al cliente)
+  const adminClient = createSupabaseAdminClient();
+  const { data: allRequests } = await adminClient
     .from("certificate_requests")
-    .select("id, reference_code, property_address, status, is_paid, paid_at, delivered_at, created_at, service_types(name)")
+    .select("id, reference_code, property_address, status, is_paid, paid_at, delivered_at, created_at, price, is_hidden_from_client, service_types(name)")
     .eq("organization_id", id)
     .order("created_at", { ascending: false });
 
   const requests = allRequests ?? [];
+
+  // Apuntes contables ligados a este cliente
+  const { data: financeRows } = await adminClient
+    .from("finance_entries")
+    .select("*")
+    .eq("organization_id", id)
+    .order("entry_date", { ascending: false });
+
+  const financeEntries = (financeRows ?? []) as FinanceEntry[];
+
+  // Totales financieros del cliente
+  const totalIngresos = financeEntries
+    .filter((e) => e.kind === "income")
+    .reduce((a, e) => a + Number(e.amount), 0);
+  const totalGastos = financeEntries
+    .filter((e) => e.kind === "expense")
+    .reduce((a, e) => a + Number(e.amount), 0);
+
+  // Mapa para mostrar el proyecto en los apuntes que lo tengan
+  const projectsById: Record<string, { reference_code: string | null; property_address: string | null }> = {};
+  for (const r of requests) {
+    projectsById[r.id] = {
+      reference_code: r.reference_code,
+      property_address: r.property_address,
+    };
+  }
+
+  const eur = (n: number) => n.toLocaleString("es-ES", {
+    style: "currency", currency: "EUR", minimumFractionDigits: 2,
+  });
 
   const updateOrgBound = updateOrg.bind(null, id);
   const deleteOrgBound = deleteOrg.bind(null, id);
@@ -138,6 +172,46 @@ export default async function ClienteDetallePage({ params, searchParams }: Props
 
       {/* Sección de facturación — ancho completo */}
       <BillingTable requests={requests} orgName={org.name} />
+
+      {/* Sección de movimientos contables del cliente */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Wallet className="h-4 w-4" />
+              Movimientos contables
+            </CardTitle>
+            <div className="flex items-center gap-3 text-sm">
+              <span className="text-muted-foreground">
+                Ingresos: <span className="font-mono font-semibold text-green-700">{eur(totalIngresos)}</span>
+              </span>
+              <span className="text-muted-foreground">
+                Gastos: <span className="font-mono font-semibold text-orange-600">{eur(totalGastos)}</span>
+              </span>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Apuntes contables imputados a {org.name}. Incluye los ingresos generados desde los proyectos y los movimientos manuales (facturas que no provienen de un servicio en plataforma).
+          </p>
+
+          {/* Formulario para añadir movimiento manual al cliente */}
+          <FinanceEntryForm
+            organizationId={id}
+            requestId={null}
+            triggerLabel="Añadir movimiento manual"
+          />
+
+          {/* Tabla */}
+          <FinanceEntriesTable
+            entries={financeEntries}
+            showProject
+            projectsById={projectsById}
+            emptyText="Todavía no hay movimientos para este cliente."
+          />
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Formulario de edición */}

@@ -18,8 +18,14 @@ interface Request {
   paid_at: string | null;
   delivered_at: string | null;
   created_at: string;
+  price?: number | null;
+  is_hidden_from_client?: boolean;
   service_types?: { name: string } | { name: string }[] | null;
 }
+
+const eur = (n: number) => n.toLocaleString("es-ES", {
+  style: "currency", currency: "EUR", minimumFractionDigits: 2,
+});
 
 interface Props {
   requests: Request[];
@@ -38,6 +44,12 @@ export function BillingTable({ requests, orgName }: Props) {
 
   const unpaid = billable.filter((r) => !r.is_paid);
   const paid = billable.filter((r) => r.is_paid);
+
+  // Totales €
+  const totalFacturado = billable.reduce((a, r) => a + (r.price ?? 0), 0);
+  const totalCobrado   = paid.reduce((a, r) => a + (r.price ?? 0), 0);
+  const totalPendiente = unpaid.reduce((a, r) => a + (r.price ?? 0), 0);
+  const withoutPrice   = billable.filter((r) => r.price == null).length;
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -188,6 +200,7 @@ export function BillingTable({ requests, orgName }: Props) {
                 <th className="hidden px-3 py-2 text-left font-medium md:table-cell">Servicio</th>
                 <th className="hidden px-3 py-2 text-left font-medium sm:table-cell">Dirección</th>
                 <th className="px-3 py-2 text-left font-medium">Estado</th>
+                <th className="px-3 py-2 text-right font-medium">Importe</th>
                 <th className="px-3 py-2 text-left font-medium">Pago</th>
               </tr>
             </thead>
@@ -226,6 +239,13 @@ export function BillingTable({ requests, orgName }: Props) {
                   <td className="px-3 py-2">
                     <StatusBadge status={r.status as "submitted"} />
                   </td>
+                  <td className="px-3 py-2 text-right font-mono whitespace-nowrap">
+                    {r.price != null ? (
+                      <span className="font-semibold">{eur(r.price)}</span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">Sin precio</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2">
                     {r.is_paid ? (
                       <Badge variant="success" className="gap-1">
@@ -245,14 +265,26 @@ export function BillingTable({ requests, orgName }: Props) {
           </table>
         </div>
 
-        {/* Resumen */}
-        <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-2 text-sm">
-          <span className="text-muted-foreground">
-            Total facturables: <span className="font-semibold text-foreground">{billable.length}</span>
-          </span>
-          <span className="text-muted-foreground">
-            Cobrados: <span className="font-semibold text-green-700">{paid.length}</span> / {billable.length}
-          </span>
+        {/* Resumen económico */}
+        <div className="grid gap-2 rounded-lg bg-muted/40 px-4 py-3 text-sm sm:grid-cols-3">
+          <div>
+            <p className="text-xs text-muted-foreground">Facturado total</p>
+            <p className="font-mono text-base font-semibold">{eur(totalFacturado)}</p>
+            <p className="text-[11px] text-muted-foreground">{billable.length} proyecto{billable.length !== 1 ? "s" : ""}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Cobrado</p>
+            <p className="font-mono text-base font-semibold text-green-700">{eur(totalCobrado)}</p>
+            <p className="text-[11px] text-muted-foreground">{paid.length} proyecto{paid.length !== 1 ? "s" : ""}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Pendiente</p>
+            <p className="font-mono text-base font-semibold text-orange-600">{eur(totalPendiente)}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {unpaid.length} proyecto{unpaid.length !== 1 ? "s" : ""}
+              {withoutPrice > 0 && ` · ${withoutPrice} sin precio`}
+            </p>
+          </div>
         </div>
       </CardContent>
     </Card>
