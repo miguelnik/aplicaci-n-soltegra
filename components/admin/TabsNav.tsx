@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { LucideIcon } from "lucide-react";
 
 export interface TabItem {
   href: string;
   label: string;
-  icon?: LucideIcon;
+  /** Icono ya renderizado como JSX (no se puede pasar un componente desde
+   *  un server component a un client component, debe ser un ReactNode). */
+  icon?: React.ReactNode;
   /** Si true, sólo está "activa" cuando pathname === href exacto.
       Si false (default), activa también cuando pathname empieza con href. */
   exact?: boolean;
@@ -22,7 +23,7 @@ export function TabsNav({ tabs }: Props) {
 
   return (
     <div className="flex flex-wrap gap-1 border-b">
-      {tabs.map(({ href, label, icon: Icon, exact }) => {
+      {tabs.map(({ href, label, icon, exact }) => {
         const active = exact ? pathname === href : (pathname === href || pathname.startsWith(href + "/"));
         return (
           <Link
@@ -35,7 +36,7 @@ export function TabsNav({ tabs }: Props) {
                 : "text-muted-foreground hover:text-foreground")
             }
           >
-            {Icon && <Icon className="h-3.5 w-3.5" />}
+            {icon}
             {label}
           </Link>
         );

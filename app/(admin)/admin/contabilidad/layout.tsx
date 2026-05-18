@@ -2,11 +2,13 @@ import { requireAdmin } from "@/lib/auth";
 import { TabsNav, type TabItem } from "@/components/admin/TabsNav";
 import { Wallet, BarChart3, ListChecks, Plus } from "lucide-react";
 
+const ICON_CLS = "h-3.5 w-3.5";
+
 const TABS: TabItem[] = [
-  { href: "/admin/contabilidad",             label: "Dashboard",   icon: BarChart3, exact: true },
-  { href: "/admin/contabilidad/movimientos", label: "Movimientos", icon: ListChecks },
-  { href: "/admin/contabilidad/p-y-l",       label: "P&L",         icon: Wallet },
-  { href: "/admin/contabilidad/nueva",       label: "Nuevo",       icon: Plus },
+  { href: "/admin/contabilidad",             label: "Dashboard",   icon: <BarChart3  className={ICON_CLS} />, exact: true },
+  { href: "/admin/contabilidad/movimientos", label: "Movimientos", icon: <ListChecks className={ICON_CLS} /> },
+  { href: "/admin/contabilidad/p-y-l",       label: "P&L",         icon: <Wallet     className={ICON_CLS} /> },
+  { href: "/admin/contabilidad/nueva",       label: "Nuevo",       icon: <Plus       className={ICON_CLS} /> },
 ];
 
 export default async function ContabilidadLayout({
