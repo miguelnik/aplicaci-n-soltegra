@@ -46,15 +46,23 @@ function Kpi({
   );
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function ContabilidadDashboardPage() {
   await requireAdmin();
   const admin = createSupabaseAdminClient();
 
   // Cargar TODOS los apuntes (luego filtramos por rangos en memoria)
-  const { data: rows } = await admin
+  const { data: rows, error: queryError } = await admin
     .from("finance_entries")
     .select("*")
     .order("entry_date", { ascending: false });
+
+  if (queryError) {
+    throw new Error(
+      `Error consultando finance_entries: ${queryError.message} (code: ${queryError.code}). ¿Has ejecutado la migración 0014_erp_foundations.sql?`,
+    );
+  }
 
   const entries = (rows ?? []) as FinanceEntry[];
 
