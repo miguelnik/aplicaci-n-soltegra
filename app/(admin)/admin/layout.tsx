@@ -11,6 +11,7 @@ import {
   Users,
   Building2,
   Briefcase,
+  Wallet,
 } from "lucide-react";
 import { AdminMobileNav } from "@/components/admin/MobileNav";
 
@@ -89,6 +90,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <Link href="/admin/servicios">
               <Briefcase className="h-4 w-4" />
               Servicios
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" className="justify-start" asChild>
+            <Link href="/admin/contabilidad">
+              <Wallet className="h-4 w-4" />
+              Contabilidad
             </Link>
           </Button>
         </nav>

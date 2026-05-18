@@ -11,6 +11,7 @@ import {
   Users,
   Building2,
   Briefcase,
+  Wallet,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -20,6 +21,7 @@ const links = [
   { href: "/admin/clientes", label: "Clientes", icon: Building2 },
   { href: "/admin/usuarios", label: "Usuarios", icon: Users },
   { href: "/admin/servicios", label: "Servicios", icon: Briefcase },
+  { href: "/admin/contabilidad", label: "Contabilidad", icon: Wallet },
 ];
 
 export function AdminMobileNav() {
