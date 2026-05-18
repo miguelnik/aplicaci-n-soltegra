@@ -6,9 +6,16 @@ import {
   filterByDateRange,
   monthBounds,
   monthLabel,
+  monthShortLabel,
   currentMonth,
+  platformMonths,
+  platformYears,
+  monthsOfYear,
+  PLATFORM_START_YEAR,
 } from "@/lib/finance/pnl";
 import type { FinanceEntry } from "@/lib/finance/types";
+
+export const dynamic = "force-dynamic";
 
 const eur = (n: number) => n.toLocaleString("es-ES", {
   style: "currency", currency: "EUR", minimumFractionDigits: 2,
@@ -16,20 +23,7 @@ const eur = (n: number) => n.toLocaleString("es-ES", {
 const pct = (n: number) => `${n.toLocaleString("es-ES", { maximumFractionDigits: 1 })}%`;
 
 interface Props {
-  searchParams: Promise<{ month?: string; range?: string }>;
-}
-
-/** Genera lista de últimos 12 meses como YYYY-MM */
-function lastTwelveMonths(): string[] {
-  const out: string[] = [];
-  const d = new Date();
-  for (let i = 0; i < 12; i++) {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    out.unshift(`${y}-${m}`);
-    d.setMonth(d.getMonth() - 1);
-  }
-  return out;
+  searchParams: Promise<{ month?: string; year?: string; range?: string }>;
 }
 
 export default async function PnlPage({ searchParams }: Props) {
@@ -37,50 +31,79 @@ export default async function PnlPage({ searchParams }: Props) {
   const sp = await searchParams;
   const admin = createSupabaseAdminClient();
 
-  const months = lastTwelveMonths();
-  const selectedMonth = sp.month && months.includes(sp.month) ? sp.month : currentMonth();
-  const range = sp.range === "year" ? "year" : "month";
+  const months = platformMonths();
+  const years  = platformYears();
+  const range  = sp.range === "year" ? "year" : "month";
 
-  // Determinar rango
+  const selectedMonth = sp.month && months.includes(sp.month)
+    ? sp.month
+    : currentMonth();
+  const selectedYear = sp.year && years.includes(Number(sp.year))
+    ? Number(sp.year)
+    : new Date().getFullYear();
+
+  // ── Rango de fechas a consultar ────────────────────────────────────────
   let fromISO: string;
   let toISO: string;
+  let yearMonths: string[] = [];
   if (range === "year") {
-    // Año natural del mes seleccionado
-    const [y] = selectedMonth.split("-").map(Number);
-    fromISO = `${y}-01-01`;
-    toISO   = `${y}-12-31`;
+    yearMonths = monthsOfYear(selectedYear);
+    const first = monthBounds(yearMonths[0]).from;
+    const last  = monthBounds(yearMonths[yearMonths.length - 1]).to;
+    fromISO = first;
+    toISO   = last;
   } else {
     const b = monthBounds(selectedMonth);
     fromISO = b.from;
     toISO   = b.to;
   }
 
-  // Cargar entries del rango
-  const { data: rows } = await admin
+  // ── Cargar entries del rango ───────────────────────────────────────────
+  const { data: rows, error: queryError } = await admin
     .from("finance_entries")
     .select("*")
     .gte("entry_date", fromISO)
     .lte("entry_date", toISO)
     .order("entry_date");
 
+  if (queryError) {
+    throw new Error(`Error consultando finance_entries: ${queryError.message}`);
+  }
+
   const entries = (rows ?? []) as FinanceEntry[];
   const pnl = computePnl(entries);
 
-  // Para el resumen anual mes a mes, cargar 12 meses
-  const { data: yearRows } = await admin
-    .from("finance_entries")
-    .select("*")
-    .gte("entry_date", `${new Date().getFullYear() - 1}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`)
-    .lte("entry_date", toISO);
+  // Para el desglose mes-a-mes del año seleccionado, agrupamos por mes
+  const monthlyForYear = range === "year"
+    ? yearMonths.map((m) => {
+        const b = monthBounds(m);
+        const monthEntries = filterByDateRange(entries, b.from, b.to);
+        return { month: m, pnl: computePnl(monthEntries) };
+      })
+    : [];
 
-  const yearEntries = (yearRows ?? []) as FinanceEntry[];
+  // ── Para la pestaña "mes": evolución últimos N meses (toda la plataforma) ─
+  let rollingHistory: { month: string; pnl: ReturnType<typeof computePnl> }[] = [];
+  if (range === "month") {
+    // Cargamos toda la plataforma (puede ser muchos meses, pero limitamos a 12 más recientes)
+    const last12 = months.slice(0, 12);
+    const first = monthBounds(last12[last12.length - 1]).from;
+    const lastTo = monthBounds(last12[0]).to;
 
-  // Calcular P&L por mes
-  const monthlyPnls = months.map((m) => {
-    const b = monthBounds(m);
-    const monthEntries = filterByDateRange(yearEntries, b.from, b.to);
-    return { month: m, pnl: computePnl(monthEntries) };
-  });
+    const { data: histRows } = await admin
+      .from("finance_entries")
+      .select("*")
+      .gte("entry_date", first)
+      .lte("entry_date", lastTo);
+
+    const histEntries = (histRows ?? []) as FinanceEntry[];
+
+    rollingHistory = last12.map((m) => {
+      const b = monthBounds(m);
+      const monthEntries = filterByDateRange(histEntries, b.from, b.to);
+      return { month: m, pnl: computePnl(monthEntries) };
+    });
+  }
 
   return (
     <div className="space-y-6">
@@ -89,28 +112,45 @@ export default async function PnlPage({ searchParams }: Props) {
         <CardContent className="pt-4">
           <form className="flex flex-wrap items-end gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-medium">Mes</label>
-              <select
-                name="month"
-                defaultValue={selectedMonth}
-                className="h-9 w-44 rounded-md border border-input bg-background px-2 text-sm"
-              >
-                {months.map((m) => (
-                  <option key={m} value={m}>{monthLabel(m)}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
               <label className="text-xs font-medium">Rango</label>
               <select
                 name="range"
                 defaultValue={range}
                 className="h-9 w-44 rounded-md border border-input bg-background px-2 text-sm"
               >
-                <option value="month">Mes seleccionado</option>
-                <option value="year">Año completo</option>
+                <option value="month">Por mes</option>
+                <option value="year">Por año</option>
               </select>
             </div>
+
+            {range === "month" ? (
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Mes</label>
+                <select
+                  name="month"
+                  defaultValue={selectedMonth}
+                  className="h-9 w-44 rounded-md border border-input bg-background px-2 text-sm"
+                >
+                  {months.map((m) => (
+                    <option key={m} value={m}>{monthLabel(m)}</option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Año</label>
+                <select
+                  name="year"
+                  defaultValue={String(selectedYear)}
+                  className="h-9 w-44 rounded-md border border-input bg-background px-2 text-sm"
+                >
+                  {years.map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <button
               type="submit"
               className="h-9 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:opacity-90"
@@ -118,14 +158,20 @@ export default async function PnlPage({ searchParams }: Props) {
               Aplicar
             </button>
           </form>
+          {range === "year" && selectedYear === PLATFORM_START_YEAR && (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Año {selectedYear} muestra desde mayo (inicio de actividad en la plataforma).
+              A partir de 2027, el año se mostrará completo (Enero - Diciembre).
+            </p>
+          )}
         </CardContent>
       </Card>
 
-      {/* ── Tabla P&L del periodo seleccionado ─────────────────────────── */}
+      {/* ── Tabla P&L del periodo ─────────────────────────────────────────── */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            P&L — {range === "year" ? `Año ${selectedMonth.slice(0, 4)}` : monthLabel(selectedMonth)}
+            P&L — {range === "year" ? `Año ${selectedYear}` : monthLabel(selectedMonth)}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -161,52 +207,124 @@ export default async function PnlPage({ searchParams }: Props) {
         </CardContent>
       </Card>
 
-      {/* ── Tabla mensual últimos 12 meses ────────────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Evolución últimos 12 meses</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="px-3 py-2 text-left font-medium">Mes</th>
-                  <th className="px-3 py-2 text-right font-medium">Ingresos</th>
-                  <th className="px-3 py-2 text-right font-medium">CV</th>
-                  <th className="px-3 py-2 text-right font-medium">M. bruto</th>
-                  <th className="px-3 py-2 text-right font-medium">M. bruto %</th>
-                  <th className="px-3 py-2 text-right font-medium">Opex</th>
-                  <th className="px-3 py-2 text-right font-medium">M. neto</th>
-                  <th className="px-3 py-2 text-right font-medium">M. neto %</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {monthlyPnls.map(({ month, pnl: p }) => (
-                  <tr key={month} className="hover:bg-muted/30">
-                    <td className="px-3 py-2 whitespace-nowrap">{monthLabel(month)}</td>
-                    <td className="px-3 py-2 text-right font-mono text-green-700">{eur(p.totals.totalIncome)}</td>
-                    <td className="px-3 py-2 text-right font-mono text-orange-600">{eur(p.totals.totalVariableCost)}</td>
-                    <td className={`px-3 py-2 text-right font-mono font-semibold ${p.totals.grossMargin < 0 ? "text-red-600" : ""}`}>
-                      {eur(p.totals.grossMargin)}
+      {/* ── Vista año: tabla mes a mes del año seleccionado ─────────────── */}
+      {range === "year" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Evolución mensual {selectedYear}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">Mes</th>
+                    <th className="px-3 py-2 text-right font-medium">Ingresos</th>
+                    <th className="px-3 py-2 text-right font-medium">CV</th>
+                    <th className="px-3 py-2 text-right font-medium">M. bruto</th>
+                    <th className="px-3 py-2 text-right font-medium">M. bruto %</th>
+                    <th className="px-3 py-2 text-right font-medium">Opex</th>
+                    <th className="px-3 py-2 text-right font-medium">M. neto</th>
+                    <th className="px-3 py-2 text-right font-medium">M. neto %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {monthlyForYear.map(({ month, pnl: p }) => (
+                    <tr key={month} className="hover:bg-muted/30">
+                      <td className="px-3 py-2 whitespace-nowrap capitalize">{monthShortLabel(month)}</td>
+                      <td className="px-3 py-2 text-right font-mono text-green-700">{eur(p.totals.totalIncome)}</td>
+                      <td className="px-3 py-2 text-right font-mono text-orange-600">{eur(p.totals.totalVariableCost)}</td>
+                      <td className={`px-3 py-2 text-right font-mono font-semibold ${p.totals.grossMargin < 0 ? "text-red-600" : ""}`}>
+                        {eur(p.totals.grossMargin)}
+                      </td>
+                      <td className={`px-3 py-2 text-right font-mono text-xs ${p.totals.grossMargin < 0 ? "text-red-600" : "text-muted-foreground"}`}>
+                        {pct(p.totals.grossMarginPct)}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-orange-600">{eur(p.totals.totalOpex)}</td>
+                      <td className={`px-3 py-2 text-right font-mono font-semibold ${p.totals.netMargin < 0 ? "text-red-600" : ""}`}>
+                        {eur(p.totals.netMargin)}
+                      </td>
+                      <td className={`px-3 py-2 text-right font-mono text-xs ${p.totals.netMargin < 0 ? "text-red-600" : "text-muted-foreground"}`}>
+                        {pct(p.totals.netMarginPct)}
+                      </td>
+                    </tr>
+                  ))}
+                  {/* Fila total año */}
+                  <tr className="border-t-2 border-primary/30 bg-primary/5 font-semibold">
+                    <td className="px-3 py-2">Total {selectedYear}</td>
+                    <td className="px-3 py-2 text-right font-mono text-green-700">{eur(pnl.totals.totalIncome)}</td>
+                    <td className="px-3 py-2 text-right font-mono text-orange-600">{eur(pnl.totals.totalVariableCost)}</td>
+                    <td className={`px-3 py-2 text-right font-mono ${pnl.totals.grossMargin < 0 ? "text-red-600" : ""}`}>
+                      {eur(pnl.totals.grossMargin)}
                     </td>
-                    <td className={`px-3 py-2 text-right font-mono text-xs ${p.totals.grossMargin < 0 ? "text-red-600" : "text-muted-foreground"}`}>
-                      {pct(p.totals.grossMarginPct)}
+                    <td className={`px-3 py-2 text-right font-mono text-xs ${pnl.totals.grossMargin < 0 ? "text-red-600" : ""}`}>
+                      {pct(pnl.totals.grossMarginPct)}
                     </td>
-                    <td className="px-3 py-2 text-right font-mono text-orange-600">{eur(p.totals.totalOpex)}</td>
-                    <td className={`px-3 py-2 text-right font-mono font-semibold ${p.totals.netMargin < 0 ? "text-red-600" : ""}`}>
-                      {eur(p.totals.netMargin)}
+                    <td className="px-3 py-2 text-right font-mono text-orange-600">{eur(pnl.totals.totalOpex)}</td>
+                    <td className={`px-3 py-2 text-right font-mono ${pnl.totals.netMargin < 0 ? "text-red-600" : ""}`}>
+                      {eur(pnl.totals.netMargin)}
                     </td>
-                    <td className={`px-3 py-2 text-right font-mono text-xs ${p.totals.netMargin < 0 ? "text-red-600" : "text-muted-foreground"}`}>
-                      {pct(p.totals.netMarginPct)}
+                    <td className={`px-3 py-2 text-right font-mono text-xs ${pnl.totals.netMargin < 0 ? "text-red-600" : ""}`}>
+                      {pct(pnl.totals.netMarginPct)}
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Vista mes: rolling 12 meses ──────────────────────────────────── */}
+      {range === "month" && rollingHistory.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Evolución últimos 12 meses</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium">Mes</th>
+                    <th className="px-3 py-2 text-right font-medium">Ingresos</th>
+                    <th className="px-3 py-2 text-right font-medium">CV</th>
+                    <th className="px-3 py-2 text-right font-medium">M. bruto</th>
+                    <th className="px-3 py-2 text-right font-medium">M. bruto %</th>
+                    <th className="px-3 py-2 text-right font-medium">Opex</th>
+                    <th className="px-3 py-2 text-right font-medium">M. neto</th>
+                    <th className="px-3 py-2 text-right font-medium">M. neto %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {rollingHistory.map(({ month, pnl: p }) => (
+                    <tr key={month} className="hover:bg-muted/30">
+                      <td className="px-3 py-2 whitespace-nowrap">{monthLabel(month)}</td>
+                      <td className="px-3 py-2 text-right font-mono text-green-700">{eur(p.totals.totalIncome)}</td>
+                      <td className="px-3 py-2 text-right font-mono text-orange-600">{eur(p.totals.totalVariableCost)}</td>
+                      <td className={`px-3 py-2 text-right font-mono font-semibold ${p.totals.grossMargin < 0 ? "text-red-600" : ""}`}>
+                        {eur(p.totals.grossMargin)}
+                      </td>
+                      <td className={`px-3 py-2 text-right font-mono text-xs ${p.totals.grossMargin < 0 ? "text-red-600" : "text-muted-foreground"}`}>
+                        {pct(p.totals.grossMarginPct)}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-orange-600">{eur(p.totals.totalOpex)}</td>
+                      <td className={`px-3 py-2 text-right font-mono font-semibold ${p.totals.netMargin < 0 ? "text-red-600" : ""}`}>
+                        {eur(p.totals.netMargin)}
+                      </td>
+                      <td className={`px-3 py-2 text-right font-mono text-xs ${p.totals.netMargin < 0 ? "text-red-600" : "text-muted-foreground"}`}>
+                        {pct(p.totals.netMarginPct)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

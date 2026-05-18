@@ -30,6 +30,8 @@ import { ExpeditionDocUploader } from "./ExpeditionDocUploader";
 import { PhaseChanger } from "./PhaseChanger";
 import { DeleteAdminRequestButton } from "./DeleteAdminRequestButton";
 import { ErpPanel } from "./ErpPanel";
+import { ProjectFinancePanel } from "./ProjectFinancePanel";
+import type { FinanceEntry } from "@/lib/finance/types";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Server Actions
@@ -161,6 +163,15 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
     status_phases: Array<{ key: string; label: string; description?: string }>;
   } | null;
   const statusPhases = serviceType?.status_phases ?? [];
+  const serviceSlug  = serviceType?.slug ?? null;
+
+  // Apuntes contables del proyecto
+  const { data: financeRows } = await admin
+    .from("finance_entries")
+    .select("*")
+    .eq("request_id", id)
+    .order("entry_date", { ascending: false });
+  const financeEntries = (financeRows ?? []) as FinanceEntry[];
 
   return (
     <div className="space-y-6">
@@ -440,6 +451,16 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      {/* ── Contabilidad del proyecto (ancho completo) ── */}
+      <ProjectFinancePanel
+        requestId={req.id}
+        organizationId={req.organization_id}
+        serviceSlug={serviceSlug}
+        price={(req.price as number | null) ?? null}
+        isPaid={req.is_paid ?? false}
+        entries={financeEntries}
+      />
     </div>
   );
 }

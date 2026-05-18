@@ -6,7 +6,7 @@ import { getActiveServices } from "@/lib/services";
 import { StatusBadge } from "@/components/client/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { ArrowRight, AlertTriangle, CheckCircle2, CircleDashed, MessageSquare } from "lucide-react";
+import { ArrowRight, AlertTriangle, CheckCircle2, CircleDashed, MessageSquare, Plus } from "lucide-react";
 
 const STATUSES = [
   { value: "", label: "Todas" },
@@ -78,7 +78,15 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Solicitudes</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-bold">Solicitudes</h1>
+        <Button asChild>
+          <Link href="/admin/solicitudes/nueva">
+            <Plus className="h-4 w-4" />
+            Nueva solicitud
+          </Link>
+        </Button>
+      </div>
 
       {/* Filtros por estado */}
       <div className="flex flex-wrap gap-2">

@@ -182,3 +182,58 @@ export function monthLabel(yearMonth: string): string {
   const d = new Date(y, m - 1, 1);
   return d.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
 }
+
+/** Etiqueta corta "octubre" */
+export function monthShortLabel(yearMonth: string): string {
+  const [y, m] = yearMonth.split("-").map(Number);
+  const d = new Date(y, m - 1, 1);
+  return d.toLocaleDateString("es-ES", { month: "short" });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rangos relativos al "inicio de plataforma".
+// La plataforma arranca en mayo 2026; antes de esa fecha no hay actividad.
+// Los selectores de la P&L sólo muestran meses/años desde ese punto.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const PLATFORM_START_MONTH = "2026-05";   // YYYY-MM
+export const PLATFORM_START_YEAR  = 2026;
+
+/** Lista de meses disponibles desde el arranque de plataforma hasta hoy,
+ *  en orden descendente (mes actual primero). */
+export function platformMonths(): string[] {
+  const [startY, startM] = PLATFORM_START_MONTH.split("-").map(Number);
+  const now = new Date();
+  let y = now.getFullYear();
+  let m = now.getMonth() + 1;
+  const out: string[] = [];
+  while (y > startY || (y === startY && m >= startM)) {
+    out.push(`${y}-${String(m).padStart(2, "0")}`);
+    m--;
+    if (m === 0) { m = 12; y--; }
+  }
+  return out;
+}
+
+/** Lista de años disponibles (descendente). */
+export function platformYears(): number[] {
+  const curY = new Date().getFullYear();
+  const out: number[] = [];
+  for (let y = curY; y >= PLATFORM_START_YEAR; y--) out.push(y);
+  return out;
+}
+
+/** Meses (YYYY-MM) que componen un año en la plataforma.
+ *  Para 2026 → mayo a diciembre (8 meses).
+ *  Para 2027 en adelante → enero a diciembre (12 meses, año natural completo). */
+export function monthsOfYear(year: number): string[] {
+  const startM = year === PLATFORM_START_YEAR
+    ? Number(PLATFORM_START_MONTH.split("-")[1])
+    : 1;
+  const endM = 12;
+  const out: string[] = [];
+  for (let m = startM; m <= endM; m++) {
+    out.push(`${year}-${String(m).padStart(2, "0")}`);
+  }
+  return out;
+}
