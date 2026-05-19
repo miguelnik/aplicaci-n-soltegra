@@ -5,7 +5,8 @@ import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, ExternalLink } from "lucide-react";
+import { Clock, ExternalLink, Briefcase } from "lucide-react";
+import { GlobalHoursForm } from "./GlobalHoursForm";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,21 @@ export default async function HorasPage({ searchParams }: Props) {
       .in("role", ["admin", "superadmin"])
       .order("full_name");
     workers = data ?? [];
+  } else {
+    // Para el form, el worker actual se autoselecciona
+    workers = [{ id: me.id, full_name: me.full_name ?? "Yo" }];
   }
+
+  // Cargar lista de proyectos para el formulario de imputación
+  const { data: projectsRaw } = await admin
+    .from("certificate_requests")
+    .select("id, reference_code, property_address, status")
+    .not("status", "in", "(draft,cancelled)")
+    .order("created_at", { ascending: false })
+    .limit(500);
+  const projectsForForm = (projectsRaw ?? []) as {
+    id: string; reference_code: string | null; property_address: string | null; status: string;
+  }[];
 
   // Cargar entradas
   let q = admin
@@ -57,7 +72,7 @@ export default async function HorasPage({ searchParams }: Props) {
     .select(`
       *,
       profiles:worker_id(full_name),
-      certificate_requests:request_id(reference_code, property_address, is_general_overhead)
+      certificate_requests:request_id(reference_code, property_address)
     `)
     .gte("entry_date", fromISO)
     .lte("entry_date", toISO)
@@ -73,22 +88,31 @@ export default async function HorasPage({ searchParams }: Props) {
     (a, e) => a + Number(e.hours) * Number(e.hourly_cost_snapshot ?? 0),
     0,
   );
+  // Las horas overhead son las que no están imputadas a ningún proyecto
   const overheadHours = entries
-    .filter((e) => (e.certificate_requests as { is_general_overhead?: boolean } | null)?.is_general_overhead)
+    .filter((e) => !e.request_id)
     .reduce((a, e) => a + Number(e.hours), 0);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="flex items-center gap-2 text-2xl font-bold">
-          <Clock className="h-6 w-6 text-primary" />
-          Horas imputadas
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {isSuper
-            ? "Vista global de horas. Puedes filtrar por trabajador y por rango."
-            : "Tus horas imputadas en el periodo."}
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            <Clock className="h-6 w-6 text-primary" />
+            Horas imputadas
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {isSuper
+              ? "Vista global de horas. Puedes filtrar por trabajador y por rango."
+              : "Tus horas imputadas en el periodo."}
+          </p>
+        </div>
+        <GlobalHoursForm
+          currentUserId={me.id}
+          isSuper={isSuper}
+          workers={workers}
+          projects={projectsForForm}
+        />
       </div>
 
       {/* Filtros */}
@@ -194,7 +218,6 @@ export default async function HorasPage({ searchParams }: Props) {
                 const proj = e.certificate_requests as {
                   reference_code: string | null;
                   property_address: string | null;
-                  is_general_overhead: boolean;
                 } | null;
                 const cost = Number(e.hours) * Number(e.hourly_cost_snapshot ?? 0);
                 const worker = (e.profiles as { full_name?: string | null } | null)?.full_name;
@@ -219,13 +242,13 @@ export default async function HorasPage({ searchParams }: Props) {
                           className="inline-flex items-center gap-1 text-primary hover:underline"
                         >
                           {proj?.reference_code ?? proj?.property_address ?? "ver"}
-                          {proj?.is_general_overhead && (
-                            <Badge variant="outline" className="ml-1 text-[9px]">overhead</Badge>
-                          )}
                           <ExternalLink className="h-3 w-3" />
                         </Link>
                       ) : (
-                        <span className="text-muted-foreground italic">Sin proyecto</span>
+                        <Badge variant="outline" className="gap-1 text-[10px]">
+                          <Briefcase className="h-2.5 w-2.5" />
+                          Gastos generales
+                        </Badge>
                       )}
                     </td>
                     <td className="max-w-[260px] truncate px-3 py-2 text-xs text-muted-foreground">

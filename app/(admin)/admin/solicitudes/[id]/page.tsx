@@ -179,21 +179,21 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
   // ── Horas imputadas + datos para rentabilidad real ─────────────────────
   const [
     { data: timeRows },
-    { data: overheadIds },
+    { data: overheadHoursRows },
     { data: activeIds },
   ] = await Promise.all([
+    // Horas del propio proyecto
     admin.from("time_entries")
       .select("*, profiles:worker_id(full_name)")
       .eq("request_id", id)
       .order("entry_date", { ascending: false }),
-    // Proyectos overhead (para sumar sus horas)
+    // Horas de overhead (sin proyecto asignado)
+    admin.from("time_entries")
+      .select("hours, hourly_cost_snapshot")
+      .is("request_id", null),
+    // Proyectos activos (status no en draft/cancelled/delivered)
     admin.from("certificate_requests")
       .select("id")
-      .eq("is_general_overhead", true),
-    // Proyectos activos (status no en draft/cancelled/delivered, no overhead)
-    admin.from("certificate_requests")
-      .select("id")
-      .eq("is_general_overhead", false)
       .not("status", "in", "(draft,cancelled,delivered)"),
   ]);
 
@@ -221,14 +221,9 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
 
   // Coste indirecto prorrateado: suma de coste de horas overhead / nº proyectos activos
   let indirectLaborCost = 0;
-  const overheadRequestIds = (overheadIds ?? []).map((r) => r.id);
   const activeCount = (activeIds ?? []).length;
-  if (overheadRequestIds.length > 0 && activeCount > 0) {
-    const { data: overheadHours } = await admin
-      .from("time_entries")
-      .select("hours, hourly_cost_snapshot")
-      .in("request_id", overheadRequestIds);
-    const totalOverheadCost = (overheadHours ?? []).reduce(
+  if (activeCount > 0) {
+    const totalOverheadCost = (overheadHoursRows ?? []).reduce(
       (a, e) => a + Number(e.hours) * Number(e.hourly_cost_snapshot ?? 0),
       0,
     );
@@ -467,7 +462,6 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
             requestId={req.id}
             initialPrice={(req.price as number | null) ?? null}
             initialHidden={(req.is_hidden_from_client as boolean | undefined) ?? false}
-            initialOverhead={(req.is_general_overhead as boolean | undefined) ?? false}
           />
           {statusPhases.length > 0 ? (
             <PhaseChanger

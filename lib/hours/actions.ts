@@ -123,25 +123,3 @@ export async function updateWorkerHourlyCost(
   }
 }
 
-// ── Toggle is_general_overhead en un proyecto ─────────────────────────────────
-
-export async function toggleProjectOverhead(
-  requestId: string,
-  isOverhead: boolean,
-): Promise<{ ok: boolean; error?: string }> {
-  try {
-    await requireAdmin();
-    const admin = createSupabaseAdminClient();
-
-    const { error } = await admin
-      .from("certificate_requests")
-      .update({ is_general_overhead: isOverhead })
-      .eq("id", requestId);
-
-    if (error) return { ok: false, error: error.message };
-    revalidatePath(`/admin/solicitudes/${requestId}`);
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
-  }
-}
