@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { UserPlus, Pencil } from "lucide-react";
 import { format } from "date-fns";
+import { WorkerRateEditor } from "@/components/admin/WorkerRateEditor";
 
 interface Props {
   searchParams: Promise<{ updated?: string; deleted?: string; invited?: string }>;
@@ -26,10 +27,10 @@ export default async function UsuariosPage({ searchParams }: Props) {
   const supabase = await createSupabaseServerClient();
   const adminClient = createSupabaseAdminClient();
 
-  const { data: profiles } = await supabase
+  const { data: profiles } = await adminClient
     .from("profiles")
     .select(`
-      id, full_name, role, phone, created_at,
+      id, full_name, role, phone, hourly_cost, created_at,
       organizations(name)
     `)
     .order("created_at", { ascending: false });
@@ -77,6 +78,9 @@ export default async function UsuariosPage({ searchParams }: Props) {
               <th className="px-4 py-3 text-left font-medium">Email</th>
               <th className="px-4 py-3 text-left font-medium">Organización</th>
               <th className="px-4 py-3 text-left font-medium">Rol</th>
+              {isSuperAdmin && (
+                <th className="px-4 py-3 text-left font-medium">Tarifa coste/h</th>
+              )}
               <th className="px-4 py-3 text-left font-medium">Alta</th>
               <th className="px-4 py-3 text-left font-medium">Acciones</th>
             </tr>
@@ -103,6 +107,18 @@ export default async function UsuariosPage({ searchParams }: Props) {
                   <td className="px-4 py-3">
                     <Badge variant={roleCfg.variant}>{roleCfg.label}</Badge>
                   </td>
+                  {isSuperAdmin && (
+                    <td className="px-4 py-3">
+                      {(p.role === "admin" || p.role === "superadmin") ? (
+                        <WorkerRateEditor
+                          workerId={p.id}
+                          initialRate={(p as { hourly_cost?: number | null }).hourly_cost ?? null}
+                        />
+                      ) : (
+                        <span className="text-xs text-muted-foreground/50">—</span>
+                      )}
+                    </td>
+                  )}
                   <td className="px-4 py-3 text-muted-foreground">
                     {format(new Date(p.created_at), "dd/MM/yyyy")}
                   </td>

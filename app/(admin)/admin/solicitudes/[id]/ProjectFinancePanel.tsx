@@ -31,6 +31,12 @@ interface Props {
   price: number | null;
   isPaid: boolean;
   entries: FinanceEntry[];
+  /** Coste directo de mano de obra (horas × tarifa) */
+  directLaborCost?: number;
+  /** Coste indirecto prorrateado (overhead repartido) */
+  indirectLaborCost?: number;
+  /** Sólo el superadmin ve la rentabilidad real */
+  showProfitability?: boolean;
 }
 
 const eur = (n: number) => n.toLocaleString("es-ES", {
@@ -39,6 +45,7 @@ const eur = (n: number) => n.toLocaleString("es-ES", {
 
 export function ProjectFinancePanel({
   requestId, organizationId, serviceSlug, price, isPaid, entries,
+  directLaborCost = 0, indirectLaborCost = 0, showProfitability = false,
 }: Props) {
   const [mode, setMode] = useState<"closed" | "income" | "expense">("closed");
 
@@ -49,6 +56,11 @@ export function ProjectFinancePanel({
   const hasIncomeFromPrice = entries.some(
     (e) => e.kind === "income" && Math.abs(Number(e.amount) - (price ?? 0)) < 0.01,
   );
+
+  // Rentabilidad real (solo si tenemos precio y showProfitability)
+  const totalLaborCost = directLaborCost + indirectLaborCost;
+  const realProfit     = (price ?? 0) - totalExpense - totalLaborCost;
+  const realMarginPct  = price && price > 0 ? (realProfit / price) * 100 : 0;
 
   return (
     <Card>
@@ -72,6 +84,48 @@ export function ProjectFinancePanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+
+        {/* Rentabilidad real (solo superadmin) */}
+        {showProfitability && price != null && price > 0 && (
+          <div className="rounded-lg border-2 border-primary/30 bg-primary/5 p-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-primary">
+              Rentabilidad real del proyecto
+            </p>
+            <div className="grid gap-3 sm:grid-cols-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Precio acordado</p>
+                <p className="font-mono text-base font-semibold">{eur(price)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Gastos directos</p>
+                <p className="font-mono text-base font-semibold text-orange-600">−{eur(totalExpense)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  Mano de obra
+                  {indirectLaborCost > 0 && (
+                    <span className="ml-1 text-[10px]">(directa + overhead)</span>
+                  )}
+                </p>
+                <p className="font-mono text-base font-semibold text-orange-600">−{eur(totalLaborCost)}</p>
+                {indirectLaborCost > 0 && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Directa {eur(directLaborCost)} · Overhead {eur(indirectLaborCost)}
+                  </p>
+                )}
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Beneficio real</p>
+                <p className={`font-mono text-base font-semibold ${realProfit >= 0 ? "text-green-700" : "text-red-600"}`}>
+                  {eur(realProfit)}
+                </p>
+                <p className={`text-[11px] font-medium ${realProfit >= 0 ? "text-green-700" : "text-red-600"}`}>
+                  Margen {realMarginPct.toLocaleString("es-ES", { maximumFractionDigits: 1 })}%
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Aviso si el proyecto tiene precio y aún no se ha contabilizado */}
         {price != null && price > 0 && !hasIncomeFromPrice && (

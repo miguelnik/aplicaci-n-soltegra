@@ -31,7 +31,9 @@ import { PhaseChanger } from "./PhaseChanger";
 import { DeleteAdminRequestButton } from "./DeleteAdminRequestButton";
 import { ErpPanel } from "./ErpPanel";
 import { ProjectFinancePanel } from "./ProjectFinancePanel";
+import { HoursPanel } from "./HoursPanel";
 import type { FinanceEntry } from "@/lib/finance/types";
+import type { TimeEntryWithWorker } from "@/lib/hours/types";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Server Actions
@@ -102,7 +104,8 @@ interface Props {
 }
 
 export default async function AdminSolicitudDetallePage({ params }: Props) {
-  await requireAdmin();
+  const me = await requireAdmin();
+  const isSuper = me.role === "superadmin";
   const { id } = await params;
   const supabase = await createSupabaseServerClient();
   const admin = createSupabaseAdminClient();
@@ -172,6 +175,73 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
     .eq("request_id", id)
     .order("entry_date", { ascending: false });
   const financeEntries = (financeRows ?? []) as FinanceEntry[];
+
+  // ── Horas imputadas + datos para rentabilidad real ─────────────────────
+  const [
+    { data: timeRows },
+    { data: overheadIds },
+    { data: activeIds },
+  ] = await Promise.all([
+    admin.from("time_entries")
+      .select("*, profiles:worker_id(full_name)")
+      .eq("request_id", id)
+      .order("entry_date", { ascending: false }),
+    // Proyectos overhead (para sumar sus horas)
+    admin.from("certificate_requests")
+      .select("id")
+      .eq("is_general_overhead", true),
+    // Proyectos activos (status no en draft/cancelled/delivered, no overhead)
+    admin.from("certificate_requests")
+      .select("id")
+      .eq("is_general_overhead", false)
+      .not("status", "in", "(draft,cancelled,delivered)"),
+  ]);
+
+  const timeEntries: TimeEntryWithWorker[] = (timeRows ?? []).map((t) => {
+    const prof = (t as { profiles?: { full_name?: string | null } | null }).profiles;
+    return {
+      id: t.id,
+      worker_id: t.worker_id,
+      request_id: t.request_id,
+      entry_date: t.entry_date,
+      hours: Number(t.hours),
+      description: t.description,
+      hourly_cost_snapshot: t.hourly_cost_snapshot != null ? Number(t.hourly_cost_snapshot) : null,
+      created_at: t.created_at,
+      updated_at: t.updated_at,
+      worker_name: prof?.full_name ?? null,
+    };
+  });
+
+  // Coste directo de mano de obra de este proyecto
+  const directLaborCost = timeEntries.reduce(
+    (a, e) => a + Number(e.hours) * Number(e.hourly_cost_snapshot ?? 0),
+    0,
+  );
+
+  // Coste indirecto prorrateado: suma de coste de horas overhead / nº proyectos activos
+  let indirectLaborCost = 0;
+  const overheadRequestIds = (overheadIds ?? []).map((r) => r.id);
+  const activeCount = (activeIds ?? []).length;
+  if (overheadRequestIds.length > 0 && activeCount > 0) {
+    const { data: overheadHours } = await admin
+      .from("time_entries")
+      .select("hours, hourly_cost_snapshot")
+      .in("request_id", overheadRequestIds);
+    const totalOverheadCost = (overheadHours ?? []).reduce(
+      (a, e) => a + Number(e.hours) * Number(e.hourly_cost_snapshot ?? 0),
+      0,
+    );
+    indirectLaborCost = totalOverheadCost / activeCount;
+  }
+
+  // Lista de workers (admin/superadmin) para el formulario de horas
+  // (sólo necesaria si el actual es superadmin, pero la cargamos siempre por simplicidad)
+  const workersList = (workers ?? []).map((w) => ({
+    id: w.id,
+    full_name: w.full_name,
+    hourly_cost: null,
+  }));
 
   return (
     <div className="space-y-6">
@@ -397,6 +467,7 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
             requestId={req.id}
             initialPrice={(req.price as number | null) ?? null}
             initialHidden={(req.is_hidden_from_client as boolean | undefined) ?? false}
+            initialOverhead={(req.is_general_overhead as boolean | undefined) ?? false}
           />
           {statusPhases.length > 0 ? (
             <PhaseChanger
@@ -452,6 +523,15 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
         </div>
       </div>
 
+      {/* ── Horas imputadas (ancho completo) ── */}
+      <HoursPanel
+        requestId={req.id}
+        entries={timeEntries}
+        currentUserId={me.id}
+        currentRole={isSuper ? "superadmin" : "admin"}
+        workers={workersList}
+      />
+
       {/* ── Contabilidad del proyecto (ancho completo) ── */}
       <ProjectFinancePanel
         requestId={req.id}
@@ -460,6 +540,9 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
         price={(req.price as number | null) ?? null}
         isPaid={req.is_paid ?? false}
         entries={financeEntries}
+        directLaborCost={directLaborCost}
+        indirectLaborCost={indirectLaborCost}
+        showProfitability={isSuper}
       />
     </div>
   );

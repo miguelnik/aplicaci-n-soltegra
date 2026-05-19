@@ -9,20 +9,37 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Euro, Eye, EyeOff } from "lucide-react";
+import { Euro, Eye, EyeOff, Briefcase } from "lucide-react";
 import { toast } from "sonner";
 import { updateRequestErp } from "./actions";
+import { toggleProjectOverhead } from "@/lib/hours/actions";
 
 interface Props {
   requestId: string;
   initialPrice: number | null;
   initialHidden: boolean;
+  initialOverhead: boolean;
 }
 
-export function ErpPanel({ requestId, initialPrice, initialHidden }: Props) {
+export function ErpPanel({ requestId, initialPrice, initialHidden, initialOverhead }: Props) {
   const [price, setPrice]   = useState(initialPrice != null ? String(initialPrice) : "");
   const [hidden, setHidden] = useState(initialHidden);
+  const [overhead, setOverhead] = useState(initialOverhead);
   const [saving, startTransition] = useTransition();
+
+  function toggleOverhead() {
+    const next = !overhead;
+    startTransition(async () => {
+      const res = await toggleProjectOverhead(requestId, next);
+      if (res.ok) {
+        setOverhead(next);
+        if (next) setHidden(true);   // se oculta automáticamente
+        toast.success(next ? "Marcado como proyecto overhead" : "Ya no es overhead");
+      } else {
+        toast.error(res.error ?? "Error al guardar");
+      }
+    });
+  }
 
   function savePrice() {
     const parsed = price === "" ? null : parseFloat(price);
@@ -110,6 +127,33 @@ export function ErpPanel({ requestId, initialPrice, initialHidden }: Props) {
           <p className="text-[11px] text-muted-foreground">
             Si está oculto, el cliente nunca verá esta solicitud en su portal.
             Útil para servicios internos o proyectos gestionados al margen.
+          </p>
+        </div>
+
+        {/* Overhead */}
+        <div className="space-y-1.5 border-t pt-3">
+          <Label className="flex items-center gap-1.5 text-xs font-medium">
+            <Briefcase className="h-3.5 w-3.5 text-blue-600" />
+            Proyecto de gastos generales (overhead)
+          </Label>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm">
+              {overhead ? "Sí — sus horas se prorratean al resto" : "Proyecto normal"}
+            </span>
+            <Button
+              size="sm"
+              variant={overhead ? "outline" : "secondary"}
+              onClick={toggleOverhead}
+              disabled={saving}
+            >
+              {overhead ? "Desactivar" : "Marcar overhead"}
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Marca este proyecto como contenedor de horas no atribuibles
+            (administración, formación, comercial). Sus horas se reparten
+            por igual entre todos los proyectos activos al calcular la rentabilidad real.
+            Se oculta automáticamente al cliente.
           </p>
         </div>
       </CardContent>
