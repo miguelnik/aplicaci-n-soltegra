@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, ExternalLink, Briefcase } from "lucide-react";
 import { GlobalHoursForm } from "./GlobalHoursForm";
+import { DeleteTimeEntryButton } from "./DeleteTimeEntryButton";
 
 export const dynamic = "force-dynamic";
 
@@ -211,6 +212,7 @@ export default async function HorasPage({ searchParams }: Props) {
                 {isSuper && <th className="px-3 py-2 text-right font-medium">Coste</th>}
                 <th className="px-3 py-2 text-left font-medium">Proyecto</th>
                 <th className="px-3 py-2 text-left font-medium">Descripción</th>
+                <th className="px-3 py-2"></th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -253,6 +255,11 @@ export default async function HorasPage({ searchParams }: Props) {
                     </td>
                     <td className="max-w-[260px] truncate px-3 py-2 text-xs text-muted-foreground">
                       {e.description ?? "—"}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      {(isSuper || e.worker_id === me.id) && (
+                        <DeleteTimeEntryButton entryId={e.id} />
+                      )}
                     </td>
                   </tr>
                 );

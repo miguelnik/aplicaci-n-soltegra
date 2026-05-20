@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Wallet, CircleDashed, AlertTriangle } from "lucide-react";
 import type { FinanceEntry } from "@/lib/finance/types";
+import type { TimeEntry } from "@/lib/hours/types";
 import {
   computePnl,
   filterByDateRange,
@@ -66,6 +67,17 @@ export default async function ContabilidadDashboardPage() {
 
   const entries = (rows ?? []) as FinanceEntry[];
 
+  // Cargar horas para inyectar coste como "Sueldos" en P&L
+  const { data: timeRows } = await admin
+    .from("time_entries")
+    .select("*")
+    .order("entry_date", { ascending: false });
+  const timeEntries = ((timeRows ?? []) as Array<Omit<TimeEntry, "hours" | "hourly_cost_snapshot"> & { hours: string | number; hourly_cost_snapshot: string | number | null }>).map((t) => ({
+    ...t,
+    hours: Number(t.hours),
+    hourly_cost_snapshot: t.hourly_cost_snapshot != null ? Number(t.hourly_cost_snapshot) : null,
+  })) as TimeEntry[];
+
   // ── Rangos ─────────────────────────────────────────────────────────────
   const monthKey = currentMonth();
   const { from: fromMonth, to: toMonth } = monthBounds(monthKey);
@@ -81,8 +93,12 @@ export default async function ContabilidadDashboardPage() {
   const monthEntries = filterByDateRange(entries, fromMonth, toMonth);
   const yearEntries  = filterByDateRange(entries, fromYear,  toYear);
 
-  const monthPnl = computePnl(monthEntries);
-  const yearPnl  = computePnl(yearEntries);
+  // Horas dentro de cada rango
+  const monthTime = timeEntries.filter((t) => t.entry_date >= fromMonth && t.entry_date <= toMonth);
+  const yearTime  = timeEntries.filter((t) => t.entry_date >= fromYear  && t.entry_date <= toYear);
+
+  const monthPnl = computePnl(monthEntries, monthTime);
+  const yearPnl  = computePnl(yearEntries,  yearTime);
 
   // ── Pendientes ─────────────────────────────────────────────────────────
   const pendingIncome = entries

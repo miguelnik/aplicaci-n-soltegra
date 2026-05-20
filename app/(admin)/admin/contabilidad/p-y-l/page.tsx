@@ -14,8 +14,17 @@ import {
   PLATFORM_START_YEAR,
 } from "@/lib/finance/pnl";
 import type { FinanceEntry } from "@/lib/finance/types";
+import type { TimeEntry } from "@/lib/hours/types";
 
 export const dynamic = "force-dynamic";
+
+function normalizeTime(rows: Array<{ hours: string | number; hourly_cost_snapshot: string | number | null } & Record<string, unknown>>): TimeEntry[] {
+  return rows.map((t) => ({
+    ...(t as unknown as TimeEntry),
+    hours: Number(t.hours),
+    hourly_cost_snapshot: t.hourly_cost_snapshot != null ? Number(t.hourly_cost_snapshot) : null,
+  }));
+}
 
 const eur = (n: number) => n.toLocaleString("es-ES", {
   style: "currency", currency: "EUR", minimumFractionDigits: 2,
@@ -71,14 +80,24 @@ export default async function PnlPage({ searchParams }: Props) {
   }
 
   const entries = (rows ?? []) as FinanceEntry[];
-  const pnl = computePnl(entries);
+
+  // Horas en el rango (para alimentar la línea "Sueldos")
+  const { data: timeRows } = await admin
+    .from("time_entries")
+    .select("*")
+    .gte("entry_date", fromISO)
+    .lte("entry_date", toISO);
+  const timeEntries = normalizeTime((timeRows ?? []) as Array<{ hours: string | number; hourly_cost_snapshot: string | number | null } & Record<string, unknown>>);
+
+  const pnl = computePnl(entries, timeEntries);
 
   // Para el desglose mes-a-mes del año seleccionado, agrupamos por mes
   const monthlyForYear = range === "year"
     ? yearMonths.map((m) => {
         const b = monthBounds(m);
         const monthEntries = filterByDateRange(entries, b.from, b.to);
-        return { month: m, pnl: computePnl(monthEntries) };
+        const monthTime = timeEntries.filter((t) => t.entry_date >= b.from && t.entry_date <= b.to);
+        return { month: m, pnl: computePnl(monthEntries, monthTime) };
       })
     : [];
 
@@ -90,18 +109,19 @@ export default async function PnlPage({ searchParams }: Props) {
     const first = monthBounds(last12[last12.length - 1]).from;
     const lastTo = monthBounds(last12[0]).to;
 
-    const { data: histRows } = await admin
-      .from("finance_entries")
-      .select("*")
-      .gte("entry_date", first)
-      .lte("entry_date", lastTo);
+    const [{ data: histRows }, { data: histTimeRows }] = await Promise.all([
+      admin.from("finance_entries").select("*").gte("entry_date", first).lte("entry_date", lastTo),
+      admin.from("time_entries").select("*").gte("entry_date", first).lte("entry_date", lastTo),
+    ]);
 
     const histEntries = (histRows ?? []) as FinanceEntry[];
+    const histTime = normalizeTime((histTimeRows ?? []) as Array<{ hours: string | number; hourly_cost_snapshot: string | number | null } & Record<string, unknown>>);
 
     rollingHistory = last12.map((m) => {
       const b = monthBounds(m);
       const monthEntries = filterByDateRange(histEntries, b.from, b.to);
-      return { month: m, pnl: computePnl(monthEntries) };
+      const monthTime = histTime.filter((t) => t.entry_date >= b.from && t.entry_date <= b.to);
+      return { month: m, pnl: computePnl(monthEntries, monthTime) };
     });
   }
 

@@ -13,6 +13,7 @@
 import type {
   FinanceEntry, IncomeCategory, ExpenseCategory,
 } from "./types";
+import type { TimeEntry } from "@/lib/hours/types";
 
 export interface PnlRow {
   /** Etiqueta visible */
@@ -70,8 +71,18 @@ const FIXED_COST_ROWS: { key: ExpenseCategory; label: string }[] = [
   { key: "other",    label: "Otros gastos fijos" },
 ];
 
-/** Calcula el P&L a partir de una lista de apuntes. */
-export function computePnl(entries: FinanceEntry[]): PnlResult {
+/** Calcula el P&L a partir de una lista de apuntes.
+ *  Si se pasan time_entries, su coste (horas × tarifa) se suma a la línea
+ *  "Sueldos" automáticamente (sin necesidad de crear apuntes manuales). */
+export function computePnl(
+  entries: FinanceEntry[],
+  timeEntries: TimeEntry[] = [],
+): PnlResult {
+  // Coste laboral derivado de horas imputadas (= sueldos)
+  const timeLaborCost = timeEntries.reduce(
+    (a, t) => a + Number(t.hours) * Number(t.hourly_cost_snapshot ?? 0),
+    0,
+  );
   // ── Ingresos ────────────────────────────────────────────────────────────
   const incomeRows: PnlRow[] = INCOME_ROWS.map((r) => ({
     label: r.label,
@@ -97,14 +108,18 @@ export function computePnl(entries: FinanceEntry[]): PnlResult {
   const grossMarginPct = totalIncome > 0 ? (grossMargin / totalIncome) * 100 : 0;
 
   // ── Costes fijos ────────────────────────────────────────────────────────
-  // Por defecto "other" es fijo según EXPENSE_COST_TYPE
-  const fixedRows: PnlRow[] = FIXED_COST_ROWS.map((r) => ({
-    label: r.label,
-    key: r.key,
-    amount: sum(filterExpense(entries, r.key)),
-    type: "expense",
-    indent: 1,
-  }));
+  // "Sueldos" = manual entries de categoría salaries + coste de horas imputadas
+  const fixedRows: PnlRow[] = FIXED_COST_ROWS.map((r) => {
+    let amt = sum(filterExpense(entries, r.key));
+    if (r.key === "salaries") amt += timeLaborCost;
+    return {
+      label: r.label,
+      key: r.key,
+      amount: amt,
+      type: "expense" as const,
+      indent: 1,
+    };
+  });
   const totalFixedCost = fixedRows.reduce((a, r) => a + r.amount, 0);
 
   // Opex total = costes fijos
