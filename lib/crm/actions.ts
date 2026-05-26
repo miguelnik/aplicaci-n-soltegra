@@ -59,7 +59,7 @@ export async function createCrmContact(
   }
 }
 
-export interface UpdateContactInput extends Partial<CreateContactInput> {}
+export type UpdateContactInput = Partial<CreateContactInput>;
 
 export async function updateCrmContact(
   id: string,

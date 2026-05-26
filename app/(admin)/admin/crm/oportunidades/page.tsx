@@ -17,10 +17,6 @@ interface Props {
   searchParams: Promise<{ stage?: string; owner?: string }>;
 }
 
-const eur = (n: number) => n.toLocaleString("es-ES", {
-  style: "currency", currency: "EUR", minimumFractionDigits: 0, maximumFractionDigits: 0,
-});
-
 export default async function OportunidadesPage({ searchParams }: Props) {
   await requireAdmin();
   const sp = await searchParams;

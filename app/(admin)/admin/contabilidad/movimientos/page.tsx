@@ -6,9 +6,6 @@ import {
   INCOME_CATEGORY_LABELS,
   EXPENSE_CATEGORY_LABELS,
   type FinanceEntry,
-  type FinanceKind,
-  type IncomeCategory,
-  type ExpenseCategory,
 } from "@/lib/finance/types";
 
 const eur = (n: number) => n.toLocaleString("es-ES", {

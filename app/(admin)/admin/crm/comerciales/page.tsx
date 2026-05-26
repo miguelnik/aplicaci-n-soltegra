@@ -3,11 +3,7 @@ import { requireAdmin } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  STAGE_LABEL,
-  type OpportunityStage,
-} from "@/lib/crm/types";
-import { Target, TrendingUp, Trophy, XCircle, Users, Mail } from "lucide-react";
+import { Target, TrendingUp, Trophy } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 

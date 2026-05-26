@@ -4,7 +4,6 @@
 // (a diferencia de las del cliente, el admin puede asignar visibilidad,
 //  precio, asignar a sí mismo cualquier cliente, etc.)
 
-import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
