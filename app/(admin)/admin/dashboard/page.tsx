@@ -13,7 +13,6 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
   const me = await requireAdmin();
-  const isSuper = me.role === "superadmin";
   const supabase = await createSupabaseServerClient();
 
   // ── Tareas pendientes (mías + recordatorios) ───────────────────────────

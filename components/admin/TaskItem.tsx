@@ -11,8 +11,8 @@ import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  CheckCircle2, Circle, Clock, Trash2, ExternalLink,
-  User, Building2, FileText, Briefcase, AlertCircle,
+  Circle, Clock, Trash2, ExternalLink,
+  User, FileText, Briefcase, AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { toggleTaskDone, deleteUserTask } from "@/lib/tasks/actions";

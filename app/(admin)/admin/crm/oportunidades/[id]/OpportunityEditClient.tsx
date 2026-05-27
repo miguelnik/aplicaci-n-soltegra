@@ -316,7 +316,7 @@ function ConvertDialog({
         <div className="space-y-3">
           {!o.organization_id && (
             <p className="rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-700">
-              Antes asigna un cliente (organización) en "Editar".
+              Antes asigna un cliente (organización) en &ldquo;Editar&rdquo;.
             </p>
           )}
           <div className="space-y-1">

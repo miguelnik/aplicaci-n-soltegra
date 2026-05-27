@@ -11,7 +11,6 @@ import { es } from "date-fns/locale";
 import { InteractionTimeline } from "@/components/admin/InteractionTimeline";
 import { OpportunityEditClient } from "./OpportunityEditClient";
 import { NewTaskButton } from "@/components/admin/NewTaskButton";
-import { loadAllUserTasks } from "@/lib/tasks/dashboard";
 import { TaskItem } from "@/components/admin/TaskItem";
 import {
   STAGE_LABEL, STAGE_COLOR,

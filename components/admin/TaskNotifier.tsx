@@ -46,8 +46,6 @@ export function TaskNotifier({ items }: Props) {
       if (now - updated[k] > SILENCE_MS * 24) delete updated[k];
     }
 
-    let overdueCount = 0;
-    let todayCount = 0;
     const toShow: PendingItem[] = [];
 
     for (const item of items) {
@@ -68,9 +66,6 @@ export function TaskNotifier({ items }: Props) {
 
       toShow.push(item);
       updated[key] = now;
-
-      if (overdue) overdueCount++;
-      else if (isToday) todayCount++;
     }
 
     // Mostrar máximo 3 toasts individuales para no saturar; el resto resumir
