@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
   page: {
     paddingTop: 36,
     paddingHorizontal: 36,
-    paddingBottom: 110,
+    paddingBottom: 70,
     fontSize: 9,
     color: TEXT,
     fontFamily: "Helvetica",
@@ -169,27 +169,16 @@ const styles = StyleSheet.create({
   itemPrice: { fontSize: 9, color: TEXT },
   itemTotal: { fontSize: 9, color: NAVY, fontFamily: "Helvetica-Bold" },
 
-  // Totales y condiciones (lado a lado)
-  bottomRow: { flexDirection: "row", marginTop: 14, gap: 14 },
+  // Zona inferior: totales destacados a ancho completo + condiciones encima
+  bottomBlock: { marginTop: 18 },
 
-  condBox: { flex: 1, flexDirection: "row", alignItems: "flex-start", gap: 8 },
-  condIconBox: {
-    width: 26, height: 26,
-    borderRadius: 13,
-    backgroundColor: NAVY,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  condTitle: { fontSize: 9, fontFamily: "Helvetica-Bold", color: NAVY, letterSpacing: 1, marginBottom: 4 },
-  condText: { fontSize: 8, color: TEXT, lineHeight: 1.5 },
-  condBullet: { fontSize: 8, color: TEXT, lineHeight: 1.4 },
-
-  totalsBlock: { width: 240 },
+  // Totales en bloque de ancho completo, derecha
+  totalsBlock: { marginLeft: "auto", width: 280 },
   totalsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingVertical: 7,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     borderBottomWidth: 0.5,
     borderBottomColor: BORDER,
   },
@@ -200,19 +189,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: NAVY,
     marginTop: 0,
-    height: 38,
+    height: 42,
     alignItems: "center",
   },
   totalLabelFinal: {
     flex: 1,
-    paddingHorizontal: 12,
-    fontSize: 13,
+    paddingHorizontal: 14,
+    fontSize: 14,
     fontFamily: "Helvetica-Bold",
     color: "#ffffff",
-    letterSpacing: 1.5,
+    letterSpacing: 2,
   },
   totalValueFinalWrap: {
-    width: 110,
+    width: 120,
     height: "100%",
     backgroundColor: YELLOW,
     alignItems: "center",
@@ -220,32 +209,79 @@ const styles = StyleSheet.create({
   },
   totalValueFinal: { fontSize: 13, fontFamily: "Helvetica-Bold", color: NAVY },
 
-  // Pie navy
+  // Condiciones bajo los totales, en una caja sutil
+  condBox: {
+    marginTop: 18,
+    paddingTop: 12,
+    borderTopWidth: 0.5,
+    borderTopColor: BORDER,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  condIconBox: {
+    width: 24, height: 24,
+    borderRadius: 12,
+    backgroundColor: NAVY,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  condTitle: {
+    fontSize: 9,
+    fontFamily: "Helvetica-Bold",
+    color: NAVY,
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  condText: { fontSize: 8.5, color: TEXT, lineHeight: 1.5 },
+
+  // Pie navy — única fila, espaciada
   footer: {
     position: "absolute",
     left: 0, right: 0, bottom: 0,
     backgroundColor: NAVY,
     paddingVertical: 12,
     paddingHorizontal: 28,
+  },
+  footerAccent: {
+    height: 2,
+    backgroundColor: YELLOW,
+    width: 36,
+    marginBottom: 8,
+  },
+  footerRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  footerCompany: {
+    fontSize: 9,
+    fontFamily: "Helvetica-Bold",
+    color: "#ffffff",
+    letterSpacing: 1,
+  },
+  footerContacts: {
+    flexDirection: "row",
     alignItems: "center",
   },
   footerCol: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    width: "50%",
-    paddingVertical: 4,
-    paddingRight: 12,
+    gap: 5,
+    paddingHorizontal: 8,
+  },
+  footerSep: {
+    width: 1,
+    height: 12,
+    backgroundColor: "rgba(255,255,255,0.25)",
   },
   footerIconBox: {
-    width: 20, height: 20,
-    borderRadius: 10,
+    width: 14, height: 14,
+    borderRadius: 7,
     backgroundColor: YELLOW,
     alignItems: "center", justifyContent: "center",
   },
-  footerText: { fontSize: 7.5, color: "#ffffff", flex: 1 },
+  footerText: { fontSize: 7.5, color: "#ffffff" },
 });
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -554,30 +590,8 @@ function BudgetPdf({ budget, items, company, logoDataUrl }: BudgetPdfProps) {
           })}
         </View>
 
-        {/* Fila inferior: condiciones (izq) + totales (der) */}
-        <View style={styles.bottomRow}>
-          {/* Condiciones */}
-          <View style={styles.condBox}>
-            {(budget.payment_terms || budget.legal_notes) && (
-              <View style={styles.condIconBox}>{Ico.info("#ffffff", 14)}</View>
-            )}
-            <View style={{ flex: 1 }}>
-              {(budget.payment_terms || budget.legal_notes) && (
-                <Text style={styles.condTitle}>CONDICIONES / OBSERVACIONES</Text>
-              )}
-              {budget.payment_terms && (
-                <Text style={styles.condText}>{budget.payment_terms}</Text>
-              )}
-              {budget.legal_notes && (
-                <Text style={[styles.condText, { marginTop: 4 }]}>{budget.legal_notes}</Text>
-              )}
-              {company.iban && (
-                <Text style={[styles.condText, { marginTop: 4 }]}>IBAN: {company.iban}</Text>
-              )}
-            </View>
-          </View>
-
-          {/* Totales */}
+        {/* Zona inferior: totales destacados a ancho completo */}
+        <View style={styles.bottomBlock} wrap={false}>
           <View style={styles.totalsBlock}>
             <View style={[styles.totalsRow, { borderTopWidth: 0.5, borderTopColor: BORDER }]}>
               <Text style={styles.totalsLabel}>BASE IMPONIBLE</Text>
@@ -594,36 +608,62 @@ function BudgetPdf({ budget, items, company, logoDataUrl }: BudgetPdfProps) {
               </View>
             </View>
           </View>
+
+          {/* Condiciones / observaciones — debajo de los totales, en una caja sutil */}
+          {(budget.payment_terms || budget.legal_notes) && (
+            <View style={styles.condBox}>
+              <View style={styles.condIconBox}>{Ico.info("#ffffff", 12)}</View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.condTitle}>CONDICIONES / OBSERVACIONES</Text>
+                {budget.payment_terms && (
+                  <Text style={styles.condText}>{budget.payment_terms}</Text>
+                )}
+                {budget.legal_notes && (
+                  <Text style={[styles.condText, { marginTop: 4 }]}>{budget.legal_notes}</Text>
+                )}
+                {company.iban && (
+                  <Text style={[styles.condText, { marginTop: 4 }]}>IBAN: {company.iban}</Text>
+                )}
+              </View>
+            </View>
+          )}
         </View>
 
-        {/* Pie navy */}
+        {/* Pie navy — empresa a la izq, contactos separados con divisores a la dcha */}
         <View style={styles.footer} fixed>
-          {company.phone && (
-            <View style={styles.footerCol}>
-              <View style={styles.footerIconBox}>{Ico.phone(NAVY_DARK, 12)}</View>
-              <Text style={styles.footerText}>{company.phone}</Text>
+          <View style={styles.footerAccent} />
+          <View style={styles.footerRow}>
+            <Text style={styles.footerCompany}>
+              {(company.trade_name ?? company.legal_name).toUpperCase()}
+              {company.cif ? `  ·  CIF ${company.cif}` : ""}
+            </Text>
+            <View style={styles.footerContacts}>
+              {company.phone && (
+                <>
+                  <View style={styles.footerCol}>
+                    <View style={styles.footerIconBox}>{Ico.phone(NAVY_DARK, 9)}</View>
+                    <Text style={styles.footerText}>{company.phone}</Text>
+                  </View>
+                  {(company.email || company.website) && <View style={styles.footerSep} />}
+                </>
+              )}
+              {company.email && (
+                <>
+                  <View style={styles.footerCol}>
+                    <View style={styles.footerIconBox}>{Ico.mail(NAVY_DARK, 9)}</View>
+                    <Text style={styles.footerText}>{company.email}</Text>
+                  </View>
+                  {company.website && <View style={styles.footerSep} />}
+                </>
+              )}
+              {company.website && (
+                <View style={styles.footerCol}>
+                  <View style={styles.footerIconBox}>{Ico.globe(NAVY_DARK, 9)}</View>
+                  <Text style={styles.footerText}>{company.website}</Text>
+                </View>
+              )}
             </View>
-          )}
-          {company.email && (
-            <View style={styles.footerCol}>
-              <View style={styles.footerIconBox}>{Ico.mail(NAVY_DARK, 12)}</View>
-              <Text style={styles.footerText}>{company.email}</Text>
-            </View>
-          )}
-          {company.website && (
-            <View style={styles.footerCol}>
-              <View style={styles.footerIconBox}>{Ico.globe(NAVY_DARK, 12)}</View>
-              <Text style={styles.footerText}>{company.website}</Text>
-            </View>
-          )}
-          {(company.address_line1 || company.city) && (
-            <View style={styles.footerCol}>
-              <View style={styles.footerIconBox}>{Ico.mapPin(NAVY_DARK, 12)}</View>
-              <Text style={styles.footerText}>
-                {[company.address_line1, [company.postal_code, company.city].filter(Boolean).join(" ")].filter(Boolean).join("\n")}
-              </Text>
-            </View>
-          )}
+          </View>
         </View>
       </Page>
     </Document>
