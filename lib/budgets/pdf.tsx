@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
   page: {
     paddingTop: 36,
     paddingHorizontal: 36,
-    paddingBottom: 90,
+    paddingBottom: 110,
     fontSize: 9,
     color: TEXT,
     fontFamily: "Helvetica",
@@ -39,21 +39,21 @@ const styles = StyleSheet.create({
   tagline: { fontSize: 9, color: MUTED, marginTop: 4, letterSpacing: 0.5 },
 
   bigTitle: {
-    fontSize: 32,
+    fontSize: 20,
     fontWeight: 700,
     color: NAVY,
     textAlign: "center",
-    letterSpacing: 4,
-    marginTop: 18,
+    letterSpacing: 3,
+    marginTop: 12,
     fontFamily: "Helvetica-Bold",
   },
   titleAccent: {
-    width: 50,
-    height: 3,
+    width: 40,
+    height: 2,
     backgroundColor: YELLOW,
     alignSelf: "center",
-    marginTop: 6,
-    marginBottom: 24,
+    marginTop: 5,
+    marginBottom: 18,
   },
 
   // Bloques de metadata superior (3 columnas: nº, fecha, cliente)
@@ -105,10 +105,18 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     letterSpacing: 1,
   },
-  fiscalGrid: { flexDirection: "row", justifyContent: "space-between" },
-  fiscalCol: { flexDirection: "row", alignItems: "flex-start", flex: 1, gap: 6, paddingRight: 6 },
-  fiscalLabel: { fontSize: 7, color: MUTED, fontFamily: "Helvetica-Bold", marginBottom: 1 },
-  fiscalValue: { fontSize: 8, color: NAVY },
+  fiscalGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4 },
+  fiscalCol: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    width: "33.33%",
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+    gap: 6,
+  },
+  fiscalLabel: { fontSize: 7, color: MUTED, fontFamily: "Helvetica-Bold", marginBottom: 1, letterSpacing: 0.3 },
+  fiscalValue: { fontSize: 8, color: NAVY, lineHeight: 1.35 },
+  fiscalValueWrap: { flex: 1, minWidth: 0 },
 
   // Objeto del presupuesto
   objetoBox: {
@@ -217,20 +225,27 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0, right: 0, bottom: 0,
     backgroundColor: NAVY,
-    paddingVertical: 14,
-    paddingHorizontal: 36,
+    paddingVertical: 12,
+    paddingHorizontal: 28,
     flexDirection: "row",
-    justifyContent: "space-between",
+    flexWrap: "wrap",
     alignItems: "center",
   },
-  footerCol: { flexDirection: "row", alignItems: "center", gap: 6, flex: 1 },
+  footerCol: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    width: "50%",
+    paddingVertical: 4,
+    paddingRight: 12,
+  },
   footerIconBox: {
-    width: 22, height: 22,
-    borderRadius: 11,
+    width: 20, height: 20,
+    borderRadius: 10,
     backgroundColor: YELLOW,
     alignItems: "center", justifyContent: "center",
   },
-  footerText: { fontSize: 8, color: "#ffffff" },
+  footerText: { fontSize: 7.5, color: "#ffffff", flex: 1 },
 });
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -427,7 +442,7 @@ function BudgetPdf({ budget, items, company, logoDataUrl }: BudgetPdfProps) {
           <View style={styles.fiscalGrid}>
             <View style={styles.fiscalCol}>
               {Ico.user(MUTED, 11)}
-              <View>
+              <View style={styles.fiscalValueWrap}>
                 <Text style={styles.fiscalLabel}>Razón social</Text>
                 <Text style={styles.fiscalValue}>{company.legal_name}</Text>
               </View>
@@ -435,7 +450,7 @@ function BudgetPdf({ budget, items, company, logoDataUrl }: BudgetPdfProps) {
             {company.cif && (
               <View style={styles.fiscalCol}>
                 {Ico.doc(MUTED, 11)}
-                <View>
+                <View style={styles.fiscalValueWrap}>
                   <Text style={styles.fiscalLabel}>CIF</Text>
                   <Text style={styles.fiscalValue}>{company.cif}</Text>
                 </View>
@@ -444,7 +459,7 @@ function BudgetPdf({ budget, items, company, logoDataUrl }: BudgetPdfProps) {
             {companyAddressLine && (
               <View style={styles.fiscalCol}>
                 {Ico.building(MUTED, 11)}
-                <View>
+                <View style={styles.fiscalValueWrap}>
                   <Text style={styles.fiscalLabel}>Domicilio fiscal</Text>
                   <Text style={styles.fiscalValue}>{companyAddressLine}</Text>
                 </View>
@@ -453,7 +468,7 @@ function BudgetPdf({ budget, items, company, logoDataUrl }: BudgetPdfProps) {
             {company.phone && (
               <View style={styles.fiscalCol}>
                 {Ico.phone(MUTED, 11)}
-                <View>
+                <View style={styles.fiscalValueWrap}>
                   <Text style={styles.fiscalLabel}>Teléfono</Text>
                   <Text style={styles.fiscalValue}>{company.phone}</Text>
                 </View>
@@ -462,7 +477,7 @@ function BudgetPdf({ budget, items, company, logoDataUrl }: BudgetPdfProps) {
             {company.email && (
               <View style={styles.fiscalCol}>
                 {Ico.mail(MUTED, 11)}
-                <View>
+                <View style={styles.fiscalValueWrap}>
                   <Text style={styles.fiscalLabel}>Email</Text>
                   <Text style={styles.fiscalValue}>{company.email}</Text>
                 </View>
@@ -471,7 +486,7 @@ function BudgetPdf({ budget, items, company, logoDataUrl }: BudgetPdfProps) {
             {company.website && (
               <View style={styles.fiscalCol}>
                 {Ico.globe(MUTED, 11)}
-                <View>
+                <View style={styles.fiscalValueWrap}>
                   <Text style={styles.fiscalLabel}>Web</Text>
                   <Text style={styles.fiscalValue}>{company.website}</Text>
                 </View>
