@@ -2,11 +2,15 @@
 
 // Editor de líneas de presupuesto/plantilla.
 // Devuelve los items vía onChange. Calcula y muestra totales en vivo.
+// Permite añadir partidas directamente o desde una biblioteca de conceptos.
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Trash2, Plus, GripVertical } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+} from "@/components/ui/dialog";
+import { Trash2, Plus, GripVertical, Library, Search } from "lucide-react";
 import { computeBudgetTotals } from "@/lib/budgets/types";
 
 export interface EditableItem {
@@ -19,18 +23,30 @@ export interface EditableItem {
   discount_pct: number;
 }
 
+export interface LibraryConcept {
+  id: string;
+  concept: string;
+  description: string | null;
+  unit: string | null;
+  unit_price: number;
+  default_quantity: number;
+  service_name?: string | null;
+}
+
 interface Props {
   items: EditableItem[];
   onChange: (items: EditableItem[]) => void;
   vatPct?: number;
   disabled?: boolean;
+  /** Si se pasa, muestra el botón "Añadir desde biblioteca" */
+  library?: LibraryConcept[];
 }
 
 const eur = (n: number) => n.toLocaleString("es-ES", {
   style: "currency", currency: "EUR", minimumFractionDigits: 2,
 });
 
-export function BudgetItemsEditor({ items, onChange, vatPct = 21, disabled = false }: Props) {
+export function BudgetItemsEditor({ items, onChange, vatPct = 21, disabled = false, library }: Props) {
   function update(idx: number, patch: Partial<EditableItem>) {
     const next = items.map((it, i) => i === idx ? { ...it, ...patch } : it);
     onChange(next);
@@ -42,6 +58,16 @@ export function BudgetItemsEditor({ items, onChange, vatPct = 21, disabled = fal
       quantity: 1,
       unit: "ud",
       unit_price: 0,
+      discount_pct: 0,
+    }]);
+  }
+  function addFromLibrary(c: LibraryConcept) {
+    onChange([...items, {
+      concept: c.concept,
+      description: c.description,
+      quantity: Number(c.default_quantity ?? 1),
+      unit: c.unit ?? "ud",
+      unit_price: Number(c.unit_price),
       discount_pct: 0,
     }]);
   }
@@ -91,7 +117,7 @@ export function BudgetItemsEditor({ items, onChange, vatPct = 21, disabled = fal
             {items.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-3 py-6 text-center text-sm text-muted-foreground">
-                  Sin partidas. Pulsa &ldquo;Añadir partida&rdquo; para empezar.
+                  Sin partidas. Añade desde la biblioteca o crea una en blanco.
                 </td>
               </tr>
             ) : items.map((it, idx) => {
@@ -171,10 +197,16 @@ export function BudgetItemsEditor({ items, onChange, vatPct = 21, disabled = fal
         </table>
       </div>
 
-      <Button variant="outline" size="sm" onClick={addLine} disabled={disabled}>
-        <Plus className="h-3.5 w-3.5" />
-        Añadir partida
-      </Button>
+      {/* Botones de añadir */}
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" size="sm" onClick={addLine} disabled={disabled}>
+          <Plus className="h-3.5 w-3.5" />
+          Añadir partida en blanco
+        </Button>
+        {library && library.length > 0 && (
+          <LibraryPicker library={library} onPick={addFromLibrary} disabled={disabled} />
+        )}
+      </div>
 
       {/* Totales en vivo */}
       <div className="ml-auto w-full max-w-xs rounded-lg border bg-muted/30 p-3 text-sm">
@@ -206,5 +238,90 @@ export function BudgetItemsEditor({ items, onChange, vatPct = 21, disabled = fal
         <GripVertical className="inline h-2.5 w-2.5" /> Usa las flechas para reordenar partidas.
       </p>
     </div>
+  );
+}
+
+// ── Modal selector de biblioteca ─────────────────────────────────────────────
+
+function LibraryPicker({
+  library, onPick, disabled,
+}: {
+  library: LibraryConcept[];
+  onPick: (c: LibraryConcept) => void;
+  disabled: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return library;
+    return library.filter((c) =>
+      c.concept.toLowerCase().includes(q)
+      || (c.description ?? "").toLowerCase().includes(q)
+      || (c.service_name ?? "").toLowerCase().includes(q)
+    );
+  }, [library, query]);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" disabled={disabled}>
+          <Library className="h-3.5 w-3.5" />
+          Añadir desde biblioteca
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Biblioteca de conceptos</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar concepto…"
+              className="pl-8"
+              autoFocus
+            />
+          </div>
+
+          {filtered.length === 0 ? (
+            <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+              {library.length === 0
+                ? "No hay conceptos en la biblioteca. Añádelos en Presupuestos → Biblioteca."
+                : "Sin resultados."}
+            </p>
+          ) : (
+            <ul className="space-y-1.5 max-h-[400px] overflow-y-auto">
+              {filtered.map((c) => (
+                <li
+                  key={c.id}
+                  className="cursor-pointer rounded-md border bg-card px-3 py-2 transition-colors hover:bg-primary/5 hover:border-primary"
+                  onClick={() => { onPick(c); setOpen(false); }}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">{c.concept}</p>
+                      {c.description && (
+                        <p className="text-xs text-muted-foreground truncate">{c.description}</p>
+                      )}
+                      {c.service_name && (
+                        <p className="mt-0.5 text-[10px] text-primary">{c.service_name}</p>
+                      )}
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="font-mono text-sm font-semibold">{eur(c.unit_price)}</p>
+                      <p className="text-[10px] text-muted-foreground">por {c.unit ?? "ud"}</p>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

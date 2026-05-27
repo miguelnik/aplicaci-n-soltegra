@@ -558,3 +558,90 @@ export async function convertBudgetToProject(
 // ── Aliases con tipos para reutilizar en client components ────────────────
 export type _BudgetItem = BudgetItem;
 export type _BudgetTemplateItem = BudgetTemplateItem;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BIBLIOTECA DE CONCEPTOS (partidas sueltas reutilizables)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface SaveConceptInput {
+  concept: string;
+  description?: string | null;
+  unit?: string | null;
+  unitPrice: number;
+  defaultQuantity?: number;
+  serviceTypeId?: string | null;
+  isActive?: boolean;
+}
+
+export async function createBudgetConcept(
+  input: SaveConceptInput,
+): Promise<{ ok: boolean; id?: string; error?: string }> {
+  try {
+    const me = await requireAdmin();
+    const admin = createSupabaseAdminClient();
+    if (!input.concept?.trim()) return { ok: false, error: "Falta el concepto" };
+
+    const { data, error } = await admin
+      .from("budget_concept_library")
+      .insert({
+        concept: input.concept.trim(),
+        description: input.description?.trim() || null,
+        unit: input.unit?.trim() || "ud",
+        unit_price: input.unitPrice,
+        default_quantity: input.defaultQuantity ?? 1,
+        service_type_id: input.serviceTypeId || null,
+        is_active: input.isActive ?? true,
+        created_by: me.id,
+      })
+      .select("id")
+      .single();
+    if (error) return { ok: false, error: error.message };
+
+    revalidatePath("/admin/presupuestos/biblioteca");
+    return { ok: true, id: data.id };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+export async function updateBudgetConcept(
+  id: string,
+  input: Partial<SaveConceptInput>,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await requireAdmin();
+    const admin = createSupabaseAdminClient();
+
+    const payload: Record<string, unknown> = {};
+    if (input.concept !== undefined && input.concept.trim()) payload.concept = input.concept.trim();
+    if (input.description !== undefined) payload.description = input.description?.trim() || null;
+    if (input.unit !== undefined) payload.unit = input.unit?.trim() || "ud";
+    if (input.unitPrice !== undefined) payload.unit_price = input.unitPrice;
+    if (input.defaultQuantity !== undefined) payload.default_quantity = input.defaultQuantity;
+    if (input.serviceTypeId !== undefined) payload.service_type_id = input.serviceTypeId || null;
+    if (input.isActive !== undefined) payload.is_active = input.isActive;
+
+    if (Object.keys(payload).length === 0) return { ok: false, error: "Sin cambios" };
+
+    const { error } = await admin.from("budget_concept_library").update(payload).eq("id", id);
+    if (error) return { ok: false, error: error.message };
+
+    revalidatePath("/admin/presupuestos/biblioteca");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+export async function deleteBudgetConcept(id: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await requireAdmin();
+    const admin = createSupabaseAdminClient();
+    const { error } = await admin.from("budget_concept_library").delete().eq("id", id);
+    if (error) return { ok: false, error: error.message };
+    revalidatePath("/admin/presupuestos/biblioteca");
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}

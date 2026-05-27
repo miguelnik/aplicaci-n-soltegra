@@ -32,13 +32,23 @@ export default async function BudgetDetailPage({ params }: Props) {
 
   const { data: items } = await admin.from("budget_items").select("*").eq("budget_id", id).order("position");
 
-  const [{ data: orgs }, { data: contacts }, { data: services }, { data: workers }, { data: opportunities }] = await Promise.all([
+  const [{ data: orgs }, { data: contacts }, { data: services }, { data: workers }, { data: opportunities }, { data: library }] = await Promise.all([
     admin.from("organizations").select("id, name").order("name"),
     admin.from("crm_contacts").select("id, full_name, organization_id, company_name").order("full_name"),
     admin.from("service_types").select("id, name").eq("is_active", true).order("display_order").order("name"),
     admin.from("profiles").select("id, full_name").in("role", ["admin", "superadmin"]).order("full_name"),
     admin.from("crm_opportunities").select("id, title").order("updated_at", { ascending: false }).limit(200),
+    admin.from("budget_concept_library").select("*, service_types:service_type_id(name)").eq("is_active", true).order("concept"),
   ]);
+  const libraryList = (library ?? []).map((c) => ({
+    id: c.id,
+    concept: c.concept,
+    description: c.description,
+    unit: c.unit,
+    unit_price: Number(c.unit_price),
+    default_quantity: Number(c.default_quantity ?? 1),
+    service_name: (c.service_types as { name?: string | null } | null)?.name ?? null,
+  }));
 
   const stage = budget.status as BudgetStatus;
   const org = budget.organizations as { id: string; name: string } | null;
@@ -151,6 +161,7 @@ export default async function BudgetDetailPage({ params }: Props) {
         services={services ?? []}
         workers={workers ?? []}
         opportunities={opportunities ?? []}
+        library={libraryList}
       />
     </div>
   );

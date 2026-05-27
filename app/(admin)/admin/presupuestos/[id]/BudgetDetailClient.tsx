@@ -18,7 +18,7 @@ import {
   updateBudget, saveBudgetItems, setBudgetStatus, deleteBudget, convertBudgetToProject,
 } from "@/lib/budgets/actions";
 import {
-  BudgetItemsEditor, type EditableItem,
+  BudgetItemsEditor, type EditableItem, type LibraryConcept,
 } from "@/components/admin/BudgetItemsEditor";
 import {
   type BudgetStatus, BUDGET_STATUS_LABEL,
@@ -56,9 +56,10 @@ interface Props {
   services: { id: string; name: string }[];
   workers: { id: string; full_name: string | null }[];
   opportunities: { id: string; title: string }[];
+  library?: LibraryConcept[];
 }
 
-export function BudgetDetailClient({ budget, initialItems, organizations, contacts, services, workers, opportunities }: Props) {
+export function BudgetDetailClient({ budget, initialItems, organizations, contacts, services, workers, opportunities, library }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [items, setItems] = useState<EditableItem[]>(initialItems);
@@ -128,6 +129,7 @@ export function BudgetDetailClient({ budget, initialItems, organizations, contac
             items={items}
             onChange={setItems}
             vatPct={Number(budget.vat_pct)}
+            library={library}
             disabled={pending || budget.status === "accepted"}
           />
         </CardContent>

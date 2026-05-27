@@ -1,12 +1,13 @@
 import { requireAdmin } from "@/lib/auth";
 import { TabsNav, type TabItem } from "@/components/admin/TabsNav";
-import { FileText, Layers, LayoutTemplate } from "lucide-react";
+import { FileText, Layers, LayoutTemplate, Library } from "lucide-react";
 
 const ICON_CLS = "h-3.5 w-3.5";
 
 const TABS: TabItem[] = [
   { href: "/admin/presupuestos",            label: "Presupuestos", icon: <Layers className={ICON_CLS} />, exact: true },
   { href: "/admin/presupuestos/plantillas", label: "Plantillas",   icon: <LayoutTemplate className={ICON_CLS} /> },
+  { href: "/admin/presupuestos/biblioteca", label: "Biblioteca",   icon: <Library className={ICON_CLS} /> },
 ];
 
 export default async function PresupuestosLayout({ children }: { children: React.ReactNode }) {

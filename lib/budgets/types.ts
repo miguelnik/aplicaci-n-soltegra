@@ -101,6 +101,24 @@ export interface BudgetTemplateWithItems extends BudgetTemplate {
   items_count?: number;
 }
 
+export interface BudgetConcept {
+  id: string;
+  concept: string;
+  description: string | null;
+  unit: string | null;
+  unit_price: number;
+  default_quantity: number;
+  service_type_id: string | null;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BudgetConceptWithService extends BudgetConcept {
+  service_name?: string | null;
+}
+
 export interface CompanySettings {
   id: string;
   legal_name: string;
