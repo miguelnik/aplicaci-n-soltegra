@@ -14,6 +14,7 @@ import {
   Wallet,
   Clock,
   Target,
+  ListChecks,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -23,6 +24,7 @@ const links = [
   { href: "/admin/clientes", label: "Clientes", icon: Building2 },
   { href: "/admin/usuarios", label: "Usuarios", icon: Users },
   { href: "/admin/servicios", label: "Servicios", icon: Briefcase },
+  { href: "/admin/tareas", label: "Tareas", icon: ListChecks },
   { href: "/admin/horas", label: "Horas", icon: Clock },
   { href: "/admin/crm", label: "CRM", icon: Target },
   { href: "/admin/contabilidad", label: "Contabilidad", icon: Wallet },

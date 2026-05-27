@@ -8,6 +8,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { autoLinkContactOnConversion } from "./client-sync";
 import type {
   OpportunityStage, InteractionKind, InteractionDirection,
 } from "./types";
@@ -363,6 +364,13 @@ export async function convertOpportunityToProject(
         converted_to_request_id: created.id,
       })
       .eq("id", opportunityId);
+
+    // Auto-link del contacto a la organización (y como cliente si tiene email)
+    try {
+      await autoLinkContactOnConversion(opp.contact_id, opp.organization_id);
+    } catch {
+      // No bloqueamos la conversión por esto
+    }
 
     revalidatePath("/admin/crm");
     revalidatePath(`/admin/crm/oportunidades/${opportunityId}`);

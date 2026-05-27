@@ -10,6 +10,9 @@ import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { InteractionTimeline } from "@/components/admin/InteractionTimeline";
 import { OpportunityEditClient } from "./OpportunityEditClient";
+import { NewTaskButton } from "@/components/admin/NewTaskButton";
+import { loadAllUserTasks } from "@/lib/tasks/dashboard";
+import { TaskItem } from "@/components/admin/TaskItem";
 import {
   STAGE_LABEL, STAGE_COLOR,
   type OpportunityStage, type CrmInteractionWithAuthor,
@@ -26,7 +29,7 @@ const eur = (n: number) => n.toLocaleString("es-ES", {
 });
 
 export default async function OpportunityDetailPage({ params }: Props) {
-  await requireAdmin();
+  const me = await requireAdmin();
   const { id } = await params;
   const admin = createSupabaseAdminClient();
 
@@ -72,6 +75,15 @@ export default async function OpportunityDetailPage({ params }: Props) {
     admin.from("service_types").select("id, name").eq("is_active", true).order("display_order").order("name"),
     admin.from("profiles").select("id, full_name").in("role", ["admin", "superadmin"]).order("full_name"),
   ]);
+
+  // Tareas vinculadas a esta oportunidad
+  const { data: oppTasksRaw } = await admin
+    .from("user_tasks")
+    .select("*, assignee:assignee_id(full_name), creator:created_by(full_name)")
+    .eq("opportunity_id", id)
+    .order("status", { ascending: true })
+    .order("due_at", { ascending: true, nullsFirst: false });
+  const oppTasks = (oppTasksRaw ?? []);
 
   const stage = opp.stage as OpportunityStage;
   const contact = opp.contacts as { id: string; full_name: string; email: string | null; phone: string | null; position: string | null } | null;
@@ -204,6 +216,56 @@ export default async function OpportunityDetailPage({ params }: Props) {
           workers={workers ?? []}
         />
       </div>
+
+      {/* Tareas vinculadas */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">Tareas pendientes</CardTitle>
+            <NewTaskButton
+              currentUserId={me.id}
+              workers={workers ?? []}
+              opportunityId={id}
+              contactId={opp.contact_id ?? null}
+            />
+          </div>
+        </CardHeader>
+        <CardContent>
+          {oppTasks.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Sin tareas vinculadas. Crea una para recordar próximos pasos.</p>
+          ) : (
+            <div className="space-y-2">
+              {oppTasks.map((t) => {
+                const ass = (t.assignee as { full_name?: string | null } | null);
+                const cr  = (t.creator  as { full_name?: string | null } | null);
+                return (
+                  <TaskItem
+                    key={t.id}
+                    item={{
+                      source: "task",
+                      id: t.id,
+                      title: t.title,
+                      description: t.description,
+                      due_at: t.due_at,
+                      priority: t.priority,
+                      assignee_id: t.assignee_id,
+                      assignee_name: ass?.full_name ?? null,
+                      creator_name: cr?.full_name ?? null,
+                      href: `/admin/crm/oportunidades/${id}`,
+                      opportunity_id: id,
+                      contact_id: t.contact_id,
+                      request_id: t.request_id,
+                      status: t.status === "done" ? "done" : "pending",
+                    }}
+                    showAssignee
+                    canDelete
+                  />
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Timeline de comunicaciones */}
       <Card>

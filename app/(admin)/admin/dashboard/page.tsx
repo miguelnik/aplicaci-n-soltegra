@@ -4,11 +4,28 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/client/StatusBadge";
 import { format } from "date-fns";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, ListChecks, ArrowRight } from "lucide-react";
+import { loadPendingFor } from "@/lib/tasks/dashboard";
+import { TaskItem } from "@/components/admin/TaskItem";
+import { TaskNotifier } from "@/components/admin/TaskNotifier";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
-  await requireAdmin();
+  const me = await requireAdmin();
+  const isSuper = me.role === "superadmin";
   const supabase = await createSupabaseServerClient();
+
+  // ── Tareas pendientes (mías + recordatorios) ───────────────────────────
+  const pendingItems = await loadPendingFor(me.id, false);
+  const overdue = pendingItems.filter((p) => p.due_at && new Date(p.due_at).getTime() < Date.now());
+  const today = pendingItems.filter((p) => {
+    if (!p.due_at) return false;
+    const d = new Date(p.due_at);
+    const nowD = new Date();
+    return d.getFullYear() === nowD.getFullYear() && d.getMonth() === nowD.getMonth() && d.getDate() === nowD.getDate() && d.getTime() >= Date.now();
+  });
+  const upcoming = pendingItems.slice(0, 8);
 
   // Contadores por estado
   const { data: counts } = await supabase
@@ -53,7 +70,50 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Toast popup para tareas de hoy/vencidas */}
+      <TaskNotifier items={pendingItems} />
+
       <h1 className="text-2xl font-bold">Dashboard</h1>
+
+      {/* Widget de tareas pendientes */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ListChecks className="h-4 w-4 text-primary" />
+              Tareas pendientes
+              {overdue.length > 0 && (
+                <span className="ml-1 rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700">
+                  {overdue.length} vencida{overdue.length > 1 ? "s" : ""}
+                </span>
+              )}
+              {today.length > 0 && (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+                  {today.length} hoy
+                </span>
+              )}
+            </CardTitle>
+            <Link href="/admin/tareas" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+              Ver todas <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {upcoming.length === 0 ? (
+            <p className="text-sm text-muted-foreground">¡Sin tareas pendientes! 🎉</p>
+          ) : (
+            <div className="space-y-2">
+              {upcoming.map((item) => (
+                <TaskItem
+                  key={`${item.source}-${item.id}`}
+                  item={item}
+                  canDelete={false}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Métricas */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
