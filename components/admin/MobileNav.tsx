@@ -15,6 +15,7 @@ import {
   Clock,
   Target,
   ListChecks,
+  Receipt,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -27,6 +28,7 @@ const links = [
   { href: "/admin/tareas", label: "Tareas", icon: ListChecks },
   { href: "/admin/horas", label: "Horas", icon: Clock },
   { href: "/admin/crm", label: "CRM", icon: Target },
+  { href: "/admin/presupuestos", label: "Presupuestos", icon: Receipt },
   { href: "/admin/contabilidad", label: "Contabilidad", icon: Wallet },
 ];
 

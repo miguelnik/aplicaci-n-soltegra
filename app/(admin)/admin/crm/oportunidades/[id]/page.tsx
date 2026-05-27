@@ -5,7 +5,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Building2, User, Mail, Phone, ExternalLink } from "lucide-react";
+import { ArrowLeft, Building2, User, Mail, Phone, ExternalLink, FileText } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { InteractionTimeline } from "@/components/admin/InteractionTimeline";
@@ -102,13 +102,23 @@ export default async function OpportunityDetailPage({ params }: Props) {
           <h2 className="text-xl font-bold">{opp.title}</h2>
           <Badge variant="outline" className={STAGE_COLOR[stage]}>{STAGE_LABEL[stage]}</Badge>
         </div>
-        {opp.converted_to_request_id && (
-          <Button asChild size="sm" variant="outline">
-            <Link href={`/admin/solicitudes/${opp.converted_to_request_id}`}>
-              Ir al proyecto <ExternalLink className="h-3.5 w-3.5" />
-            </Link>
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {!opp.converted_to_request_id && (
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/admin/presupuestos/nuevo?opportunity=${id}`}>
+                <FileText className="h-3.5 w-3.5" />
+                Crear presupuesto
+              </Link>
+            </Button>
+          )}
+          {opp.converted_to_request_id && (
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/admin/solicitudes/${opp.converted_to_request_id}`}>
+                Ir al proyecto <ExternalLink className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Resumen + acciones rápidas */}

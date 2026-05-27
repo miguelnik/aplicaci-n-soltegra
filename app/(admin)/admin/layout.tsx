@@ -15,6 +15,8 @@ import {
   Clock,
   Target,
   ListChecks,
+  Receipt,
+  Settings,
 } from "lucide-react";
 import { AdminMobileNav } from "@/components/admin/MobileNav";
 
@@ -26,7 +28,8 @@ async function signOut() {
 }
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  await requireAdmin();
+  const me = await requireAdmin();
+  const isSuper = me.role === "superadmin";
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
@@ -114,11 +117,25 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </Link>
           </Button>
           <Button variant="ghost" size="sm" className="justify-start" asChild>
+            <Link href="/admin/presupuestos">
+              <Receipt className="h-4 w-4" />
+              Presupuestos
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" className="justify-start" asChild>
             <Link href="/admin/contabilidad">
               <Wallet className="h-4 w-4" />
               Contabilidad
             </Link>
           </Button>
+          {isSuper && (
+            <Button variant="ghost" size="sm" className="justify-start" asChild>
+              <Link href="/admin/ajustes/empresa">
+                <Settings className="h-4 w-4" />
+                Ajustes empresa
+              </Link>
+            </Button>
+          )}
         </nav>
         <div className="border-t p-3">
           <form action={signOut}>
