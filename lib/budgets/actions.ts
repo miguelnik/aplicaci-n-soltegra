@@ -204,6 +204,7 @@ export async function deleteBudgetTemplate(id: string): Promise<{ ok: boolean; e
 export interface CreateBudgetInput {
   title: string;
   intro?: string | null;
+  projectLocation?: string | null;
   contactId?: string | null;
   organizationId?: string | null;
   opportunityId?: string | null;
@@ -268,6 +269,7 @@ export async function createBudget(
       .insert({
         title: input.title.trim(),
         intro: input.intro?.trim() || null,
+        project_location: input.projectLocation?.trim() || null,
         contact_id: input.contactId || null,
         organization_id: input.organizationId || null,
         opportunity_id: input.opportunityId || null,
@@ -339,6 +341,7 @@ export async function createBudget(
 export interface UpdateBudgetInput {
   title?: string;
   intro?: string | null;
+  projectLocation?: string | null;
   contactId?: string | null;
   organizationId?: string | null;
   opportunityId?: string | null;
@@ -366,6 +369,7 @@ export async function updateBudget(
     const payload: Record<string, unknown> = {};
     if (input.title !== undefined) payload.title = input.title.trim();
     if (input.intro !== undefined) payload.intro = input.intro?.trim() || null;
+    if (input.projectLocation !== undefined) payload.project_location = input.projectLocation?.trim() || null;
     if (input.contactId !== undefined) payload.contact_id = input.contactId || null;
     if (input.organizationId !== undefined) payload.organization_id = input.organizationId || null;
     if (input.opportunityId !== undefined) payload.opportunity_id = input.opportunityId || null;

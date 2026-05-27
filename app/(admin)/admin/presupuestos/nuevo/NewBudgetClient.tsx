@@ -56,6 +56,7 @@ export function NewBudgetClient({
   // ── Cabecera
   const [title, setTitle] = useState(prefill.title ?? "");
   const [intro, setIntro] = useState("");
+  const [projectLocation, setProjectLocation] = useState("");
   const [opportunityId, setOpportunityId] = useState(prefill.opportunityId ?? "");
   const [organizationId, setOrganizationId] = useState(prefill.organizationId ?? "");
   const [contactId, setContactId] = useState(prefill.contactId ?? "");
@@ -116,6 +117,7 @@ export function NewBudgetClient({
       const res = await createBudget({
         title,
         intro: intro || null,
+        projectLocation: projectLocation || null,
         opportunityId: opportunityId || null,
         organizationId: organizationId || null,
         contactId: contactId || null,
@@ -143,13 +145,19 @@ export function NewBudgetClient({
       <Card>
         <CardHeader><CardTitle className="text-base">Datos del presupuesto</CardTitle></CardHeader>
         <CardContent className="space-y-3">
-          <div className="space-y-1">
-            <Label className="text-xs">Título *</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej: Certificado energético vivienda calle Real 12" disabled={pending} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Título / Proyecto *</Label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej: Remodelación oficina corporativa" disabled={pending} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Ubicación del proyecto (aparece en el PDF)</Label>
+              <Input value={projectLocation} onChange={(e) => setProjectLocation(e.target.value)} placeholder="C/ Real 12, Granada" disabled={pending} />
+            </div>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Introducción (aparece debajo del título en el PDF)</Label>
-            <Textarea value={intro} onChange={(e) => setIntro(e.target.value)} rows={2} disabled={pending} />
+            <Label className="text-xs">Objeto del presupuesto (texto introductorio del PDF)</Label>
+            <Textarea value={intro} onChange={(e) => setIntro(e.target.value)} rows={2} placeholder="Descripción del alcance, motivación del trabajo…" disabled={pending} />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

@@ -29,6 +29,7 @@ interface BudgetData {
   number: string | null;
   title: string;
   intro: string | null;
+  project_location: string | null;
   vat_pct: number;
   issue_date: string;
   valid_until: string | null;
@@ -208,6 +209,7 @@ function EditDialog({
   const b = budget;
   const [title, setTitle] = useState(b.title);
   const [intro, setIntro] = useState(b.intro ?? "");
+  const [projectLocation, setProjectLocation] = useState(b.project_location ?? "");
   const [vatPct, setVatPct] = useState(String(b.vat_pct));
   const [issueDate, setIssueDate] = useState(b.issue_date);
   const [validUntil, setValidUntil] = useState(b.valid_until ?? "");
@@ -231,6 +233,7 @@ function EditDialog({
     startTransition(async () => {
       const res = await updateBudget(b.id, {
         title, intro: intro || null,
+        projectLocation: projectLocation || null,
         vatPct: vat,
         issueDate, validUntil: validUntil || null,
         organizationId: organizationId || null,
@@ -264,12 +267,18 @@ function EditDialog({
         <DialogHeader><DialogTitle>Editar presupuesto</DialogTitle></DialogHeader>
 
         <div className="space-y-3">
-          <div className="space-y-1">
-            <Label className="text-xs">Título *</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} disabled={pending} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Título / Proyecto *</Label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} disabled={pending} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Ubicación del proyecto</Label>
+              <Input value={projectLocation} onChange={(e) => setProjectLocation(e.target.value)} placeholder="C/ Real 12, Granada" disabled={pending} />
+            </div>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Introducción</Label>
+            <Label className="text-xs">Objeto del presupuesto (introducción del PDF)</Label>
             <Textarea value={intro} onChange={(e) => setIntro(e.target.value)} rows={2} disabled={pending} />
           </div>
 

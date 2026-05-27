@@ -48,6 +48,7 @@ export interface Budget {
   client_phone: string | null;
   title: string;
   intro: string | null;
+  project_location: string | null;
   vat_pct: number;
   issue_date: string;
   valid_until: string | null;

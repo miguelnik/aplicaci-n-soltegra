@@ -129,6 +129,7 @@ export default async function BudgetDetailPage({ params }: Props) {
           number: budget.number,
           title: budget.title,
           intro: budget.intro,
+          project_location: budget.project_location,
           vat_pct: Number(budget.vat_pct),
           issue_date: budget.issue_date,
           valid_until: budget.valid_until,
