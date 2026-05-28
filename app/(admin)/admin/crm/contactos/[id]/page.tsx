@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Mail, Phone, Building2, ExternalLink } from "lucide-react";
 import { InteractionTimeline } from "@/components/admin/InteractionTimeline";
 import { ContactEditClient } from "./ContactEditClient";
+import { ContactNotesEditor } from "./ContactNotesEditor";
 import { NewTaskButton } from "@/components/admin/NewTaskButton";
 import { TaskItem } from "@/components/admin/TaskItem";
 import {
@@ -137,12 +138,6 @@ export default async function ContactDetailPage({ params }: Props) {
             {owner?.full_name && (
               <div><span className="text-xs text-muted-foreground">Comercial:</span> <span className="font-medium">{owner.full_name}</span></div>
             )}
-            {c.notes && (
-              <div className="sm:col-span-2 border-t pt-2">
-                <p className="text-xs text-muted-foreground">Notas:</p>
-                <p className="whitespace-pre-line">{c.notes}</p>
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -163,6 +158,9 @@ export default async function ContactDetailPage({ params }: Props) {
           workers={workers ?? []}
         />
       </div>
+
+      {/* Notas del contacto */}
+      <ContactNotesEditor contactId={c.id} initial={c.notes} />
 
       {/* Oportunidades */}
       {(oppRows ?? []).length > 0 && (

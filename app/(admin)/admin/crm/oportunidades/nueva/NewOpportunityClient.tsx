@@ -16,14 +16,18 @@ interface Props {
   contacts: { id: string; full_name: string; organization_id: string | null; company_name: string | null }[];
   services: { id: string; name: string }[];
   workers: { id: string; full_name: string | null }[];
+  prefillContactId?: string | null;
+  prefillOrganizationId?: string | null;
 }
 
-export function NewOpportunityClient({ organizations, contacts, services, workers }: Props) {
+export function NewOpportunityClient({
+  organizations, contacts, services, workers, prefillContactId, prefillOrganizationId,
+}: Props) {
   const router = useRouter();
   const [title, setTitle] = useState("");
-  const [contactId, setContactId] = useState("");
-  const [organizationId, setOrgId] = useState("");
-  const [stage, setStage] = useState<OpportunityStage>("lead");
+  const [contactId, setContactId] = useState(prefillContactId ?? "");
+  const [organizationId, setOrgId] = useState(prefillOrganizationId ?? "");
+  const [stage, setStage] = useState<OpportunityStage>("contacted");
   const [serviceTypeId, setServiceTypeId] = useState("");
   const [estimatedValue, setEstimatedValue] = useState("");
   const [expectedCloseDate, setExpectedCloseDate] = useState("");

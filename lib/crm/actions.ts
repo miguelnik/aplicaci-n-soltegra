@@ -141,7 +141,7 @@ export async function createCrmOpportunity(
         contact_id: input.contactId || null,
         organization_id: input.organizationId || null,
         owner_id: input.ownerId ?? me.id,
-        stage: input.stage ?? "lead",
+        stage: input.stage ?? "contacted",
         service_type_id: input.serviceTypeId || null,
         estimated_value: input.estimatedValue ?? null,
         expected_close_date: input.expectedCloseDate || null,

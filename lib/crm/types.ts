@@ -25,32 +25,37 @@ export type InteractionDirection = "inbound" | "outbound";
 // ── Etiquetas legibles ───────────────────────────────────────────────────────
 
 export const STAGE_LABEL: Record<OpportunityStage, string> = {
-  lead:        "Lead",
-  contacted:   "Contacto inicial",
-  qualified:   "Cualificada",
-  proposal:    "Cotización enviada",
-  negotiation: "Negociación",
+  // Funnel actual
+  contacted:   "Contacto",
+  qualified:   "Reunión",
+  proposal:    "Oferta",
   won:         "Ganada",
-  lost:        "Perdida",
+  lost:        "Perdido",
+  // Legacy — sólo se muestran si hay datos históricos con estos estados
+  lead:        "Lead",
+  negotiation: "Negociación",
 };
 
 /** Orden visual de las columnas del Kanban (won/lost al final aparte) */
 export const ACTIVE_STAGES: OpportunityStage[] = [
-  "lead", "contacted", "qualified", "proposal", "negotiation",
+  "contacted", "qualified", "proposal",
 ];
 
+/** Estados disponibles para elegir en formularios y dropdowns */
 export const ALL_STAGES: OpportunityStage[] = [
   ...ACTIVE_STAGES, "won", "lost",
 ];
 
 export const STAGE_COLOR: Record<OpportunityStage, string> = {
-  lead:        "bg-slate-100 text-slate-700 border-slate-200",
+  // Funnel actual
   contacted:   "bg-blue-50 text-blue-700 border-blue-200",
   qualified:   "bg-indigo-50 text-indigo-700 border-indigo-200",
   proposal:    "bg-amber-50 text-amber-700 border-amber-200",
-  negotiation: "bg-orange-50 text-orange-700 border-orange-200",
   won:         "bg-green-50 text-green-700 border-green-200",
   lost:        "bg-rose-50 text-rose-700 border-rose-200",
+  // Legacy
+  lead:        "bg-slate-100 text-slate-700 border-slate-200",
+  negotiation: "bg-orange-50 text-orange-700 border-orange-200",
 };
 
 export const INTERACTION_KIND_LABEL: Record<InteractionKind, string> = {

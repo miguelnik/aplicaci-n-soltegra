@@ -6,8 +6,13 @@ import { NewOpportunityClient } from "./NewOpportunityClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewOpportunityPage() {
+interface Props {
+  searchParams: Promise<{ contact?: string; org?: string }>;
+}
+
+export default async function NewOpportunityPage({ searchParams }: Props) {
   await requireAdmin();
+  const sp = await searchParams;
   const admin = createSupabaseAdminClient();
 
   const [{ data: orgs }, { data: contacts }, { data: services }, { data: workers }] = await Promise.all([
@@ -16,6 +21,14 @@ export default async function NewOpportunityPage() {
     admin.from("service_types").select("id, name").eq("is_active", true).order("display_order").order("name"),
     admin.from("profiles").select("id, full_name").in("role", ["admin", "superadmin"]).order("full_name"),
   ]);
+
+  // Si vienen prefills por query string, los resolvemos
+  const prefillContact = sp.contact ?? "";
+  let prefillOrg = sp.org ?? "";
+  if (prefillContact) {
+    const c = (contacts ?? []).find((x) => x.id === prefillContact);
+    if (c && !prefillOrg && c.organization_id) prefillOrg = c.organization_id;
+  }
 
   return (
     <div className="space-y-4">
@@ -30,6 +43,8 @@ export default async function NewOpportunityPage() {
         contacts={contacts ?? []}
         services={services ?? []}
         workers={workers ?? []}
+        prefillContactId={prefillContact || null}
+        prefillOrganizationId={prefillOrg || null}
       />
     </div>
   );
