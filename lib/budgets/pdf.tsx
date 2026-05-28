@@ -34,75 +34,75 @@ const styles = StyleSheet.create({
   },
 
   // Cabecera con logo centrado
-  headerBlock: { alignItems: "center", marginBottom: 8, marginTop: 8 },
-  logo: { width: 240, height: 60, objectFit: "contain" },
-  tagline: { fontSize: 9, color: MUTED, marginTop: 4, letterSpacing: 0.5 },
+  headerBlock: { alignItems: "center", marginBottom: 4 },
+  logo: { width: 180, height: 44, objectFit: "contain" },
+  tagline: { fontSize: 8, color: MUTED, marginTop: 3, letterSpacing: 0.5 },
 
   bigTitle: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: 700,
     color: NAVY,
     textAlign: "center",
-    letterSpacing: 3,
-    marginTop: 12,
+    letterSpacing: 2.5,
+    marginTop: 8,
     fontFamily: "Helvetica-Bold",
   },
   titleAccent: {
-    width: 40,
+    width: 32,
     height: 2,
     backgroundColor: YELLOW,
     alignSelf: "center",
-    marginTop: 5,
-    marginBottom: 18,
+    marginTop: 4,
+    marginBottom: 10,
   },
 
   // Bloques de metadata superior (3 columnas: nº, fecha, cliente)
   metaRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingTop: 14,
-    paddingBottom: 14,
+    paddingTop: 8,
+    paddingBottom: 8,
     borderTopWidth: 0.5, borderTopColor: BORDER,
     borderBottomWidth: 0.5, borderBottomColor: BORDER,
   },
-  metaCol: { flexDirection: "row", alignItems: "flex-start", flex: 1, gap: 8 },
+  metaCol: { flexDirection: "row", alignItems: "flex-start", flex: 1, gap: 6 },
   metaIconBox: {
-    width: 28, height: 28,
-    borderWidth: 1, borderColor: BORDER, borderRadius: 4,
+    width: 22, height: 22,
+    borderWidth: 1, borderColor: BORDER, borderRadius: 3,
     alignItems: "center", justifyContent: "center",
   },
   metaTextBlock: { flexDirection: "column", justifyContent: "flex-start" },
   metaLabel: {
-    fontSize: 7,
+    fontSize: 6.5,
     color: MUTED,
-    letterSpacing: 1.2,
+    letterSpacing: 1,
     fontFamily: "Helvetica-Bold",
-    marginBottom: 2,
+    marginBottom: 1,
   },
-  metaValue: { fontSize: 10, color: NAVY, fontFamily: "Helvetica-Bold" },
-  metaSub:   { fontSize: 8, color: MUTED, marginTop: 1 },
+  metaValue: { fontSize: 9, color: NAVY, fontFamily: "Helvetica-Bold" },
+  metaSub:   { fontSize: 7, color: MUTED, marginTop: 1 },
 
   // Bloques de proyecto (proyecto + ubicación)
   projectRow: {
     flexDirection: "row",
-    paddingTop: 14,
-    paddingBottom: 14,
+    paddingTop: 8,
+    paddingBottom: 8,
     borderBottomWidth: 0.5,
     borderBottomColor: BORDER,
   },
 
-  // Datos fiscales del emisor (5 columnas pequeñas)
+  // Datos fiscales del emisor — más compacto
   fiscalSection: {
-    paddingTop: 12,
-    paddingBottom: 12,
+    paddingTop: 6,
+    paddingBottom: 8,
     borderBottomWidth: 0.5,
     borderBottomColor: BORDER,
   },
   fiscalHeader: {
-    fontSize: 8,
+    fontSize: 7,
     fontFamily: "Helvetica-Bold",
     color: NAVY,
-    marginBottom: 8,
+    marginBottom: 4,
     letterSpacing: 1,
   },
   fiscalGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -4 },
@@ -111,29 +111,30 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     width: "33.33%",
     paddingHorizontal: 4,
-    paddingVertical: 4,
-    gap: 6,
+    paddingVertical: 2,
+    gap: 5,
   },
-  fiscalLabel: { fontSize: 7, color: MUTED, fontFamily: "Helvetica-Bold", marginBottom: 1, letterSpacing: 0.3 },
-  fiscalValue: { fontSize: 8, color: NAVY, lineHeight: 1.35 },
+  fiscalLabel: { fontSize: 6.5, color: MUTED, fontFamily: "Helvetica-Bold", marginBottom: 0, letterSpacing: 0.3 },
+  fiscalValue: { fontSize: 7.5, color: NAVY, lineHeight: 1.3 },
   fiscalValueWrap: { flex: 1, minWidth: 0 },
 
   // Objeto del presupuesto
   objetoBox: {
     flexDirection: "row",
     alignItems: "flex-start",
-    paddingVertical: 14,
-    gap: 12,
+    paddingTop: 10,
+    paddingBottom: 8,
+    gap: 10,
   },
   objetoIconBox: {
-    width: 34, height: 34,
+    width: 26, height: 26,
     backgroundColor: YELLOW,
-    borderRadius: 4,
+    borderRadius: 3,
     alignItems: "center",
     justifyContent: "center",
   },
-  objetoTitle: { fontSize: 10, color: NAVY, fontFamily: "Helvetica-Bold", letterSpacing: 0.5, marginBottom: 5 },
-  objetoText: { fontSize: 9, color: TEXT, lineHeight: 1.5 },
+  objetoTitle: { fontSize: 8.5, color: NAVY, fontFamily: "Helvetica-Bold", letterSpacing: 0.5, marginBottom: 3 },
+  objetoText: { fontSize: 8.5, color: TEXT, lineHeight: 1.45 },
 
   // Tabla de partidas
   table: { marginTop: 6, borderRadius: 4, overflow: "hidden", borderWidth: 0.5, borderColor: BORDER },
@@ -422,14 +423,14 @@ function BudgetPdf({ budget, items, company, logoDataUrl }: BudgetPdfProps) {
         {/* Meta superior: Nº presupuesto · Fecha · Cliente */}
         <View style={styles.metaRow}>
           <View style={styles.metaCol}>
-            <View style={styles.metaIconBox}>{Ico.doc()}</View>
+            <View style={styles.metaIconBox}>{Ico.doc(NAVY, 12)}</View>
             <View style={styles.metaTextBlock}>
               <Text style={styles.metaLabel}>Nº PRESUPUESTO</Text>
               <Text style={styles.metaValue}>{budget.number ?? "—"}</Text>
             </View>
           </View>
           <View style={styles.metaCol}>
-            <View style={styles.metaIconBox}>{Ico.calendar()}</View>
+            <View style={styles.metaIconBox}>{Ico.calendar(NAVY, 12)}</View>
             <View style={styles.metaTextBlock}>
               <Text style={styles.metaLabel}>FECHA</Text>
               <Text style={styles.metaValue}>{issueDateLabel}</Text>
@@ -441,7 +442,7 @@ function BudgetPdf({ budget, items, company, logoDataUrl }: BudgetPdfProps) {
             </View>
           </View>
           <View style={styles.metaCol}>
-            <View style={styles.metaIconBox}>{Ico.user()}</View>
+            <View style={styles.metaIconBox}>{Ico.user(NAVY, 12)}</View>
             <View style={styles.metaTextBlock}>
               <Text style={styles.metaLabel}>CLIENTE</Text>
               <Text style={styles.metaValue}>{budget.client_legal_name ?? "—"}</Text>
@@ -455,7 +456,7 @@ function BudgetPdf({ budget, items, company, logoDataUrl }: BudgetPdfProps) {
         {/* Proyecto + Ubicación */}
         <View style={styles.projectRow}>
           <View style={[styles.metaCol, { flex: 1 }]}>
-            <View style={styles.metaIconBox}>{Ico.briefcase()}</View>
+            <View style={styles.metaIconBox}>{Ico.briefcase(NAVY, 12)}</View>
             <View style={styles.metaTextBlock}>
               <Text style={styles.metaLabel}>PROYECTO</Text>
               <Text style={styles.metaValue}>{budget.title}</Text>
@@ -463,7 +464,7 @@ function BudgetPdf({ budget, items, company, logoDataUrl }: BudgetPdfProps) {
           </View>
           {budget.project_location && (
             <View style={[styles.metaCol, { flex: 1 }]}>
-              <View style={styles.metaIconBox}>{Ico.mapPin()}</View>
+              <View style={styles.metaIconBox}>{Ico.mapPin(NAVY, 12)}</View>
               <View style={styles.metaTextBlock}>
                 <Text style={styles.metaLabel}>UBICACIÓN</Text>
                 <Text style={styles.metaValue}>{budget.project_location}</Text>
@@ -477,7 +478,7 @@ function BudgetPdf({ budget, items, company, logoDataUrl }: BudgetPdfProps) {
           <Text style={styles.fiscalHeader}>DATOS FISCALES (EMISOR)</Text>
           <View style={styles.fiscalGrid}>
             <View style={styles.fiscalCol}>
-              {Ico.user(MUTED, 11)}
+              {Ico.user(MUTED, 9)}
               <View style={styles.fiscalValueWrap}>
                 <Text style={styles.fiscalLabel}>Razón social</Text>
                 <Text style={styles.fiscalValue}>{company.legal_name}</Text>
@@ -485,7 +486,7 @@ function BudgetPdf({ budget, items, company, logoDataUrl }: BudgetPdfProps) {
             </View>
             {company.cif && (
               <View style={styles.fiscalCol}>
-                {Ico.doc(MUTED, 11)}
+                {Ico.doc(MUTED, 9)}
                 <View style={styles.fiscalValueWrap}>
                   <Text style={styles.fiscalLabel}>CIF</Text>
                   <Text style={styles.fiscalValue}>{company.cif}</Text>
@@ -494,7 +495,7 @@ function BudgetPdf({ budget, items, company, logoDataUrl }: BudgetPdfProps) {
             )}
             {companyAddressLine && (
               <View style={styles.fiscalCol}>
-                {Ico.building(MUTED, 11)}
+                {Ico.building(MUTED, 9)}
                 <View style={styles.fiscalValueWrap}>
                   <Text style={styles.fiscalLabel}>Domicilio fiscal</Text>
                   <Text style={styles.fiscalValue}>{companyAddressLine}</Text>
@@ -503,7 +504,7 @@ function BudgetPdf({ budget, items, company, logoDataUrl }: BudgetPdfProps) {
             )}
             {company.phone && (
               <View style={styles.fiscalCol}>
-                {Ico.phone(MUTED, 11)}
+                {Ico.phone(MUTED, 9)}
                 <View style={styles.fiscalValueWrap}>
                   <Text style={styles.fiscalLabel}>Teléfono</Text>
                   <Text style={styles.fiscalValue}>{company.phone}</Text>
@@ -512,7 +513,7 @@ function BudgetPdf({ budget, items, company, logoDataUrl }: BudgetPdfProps) {
             )}
             {company.email && (
               <View style={styles.fiscalCol}>
-                {Ico.mail(MUTED, 11)}
+                {Ico.mail(MUTED, 9)}
                 <View style={styles.fiscalValueWrap}>
                   <Text style={styles.fiscalLabel}>Email</Text>
                   <Text style={styles.fiscalValue}>{company.email}</Text>
@@ -521,7 +522,7 @@ function BudgetPdf({ budget, items, company, logoDataUrl }: BudgetPdfProps) {
             )}
             {company.website && (
               <View style={styles.fiscalCol}>
-                {Ico.globe(MUTED, 11)}
+                {Ico.globe(MUTED, 9)}
                 <View style={styles.fiscalValueWrap}>
                   <Text style={styles.fiscalLabel}>Web</Text>
                   <Text style={styles.fiscalValue}>{company.website}</Text>
@@ -534,7 +535,7 @@ function BudgetPdf({ budget, items, company, logoDataUrl }: BudgetPdfProps) {
         {/* Objeto del presupuesto */}
         {budget.intro && (
           <View style={styles.objetoBox} wrap={false}>
-            <View style={styles.objetoIconBox}>{Ico.doc("#ffffff", 18)}</View>
+            <View style={styles.objetoIconBox}>{Ico.doc("#ffffff", 14)}</View>
             <View style={{ flex: 1 }}>
               <Text style={styles.objetoTitle}>OBJETO DEL PRESUPUESTO</Text>
               <Text style={styles.objetoText}>{budget.intro}</Text>
