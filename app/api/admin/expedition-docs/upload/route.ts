@@ -6,6 +6,8 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB para documentos (PDFs grandes)
+
 export async function POST(request: Request) {
   try {
     // ── Autenticación y autorización ────────────────────────────────────────
@@ -46,6 +48,13 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { ok: false, error: `Categoría inválida. Debe ser: ${validCategories.join(", ")}` },
         { status: 400 },
+      );
+    }
+
+    if (file.size === 0 || file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { ok: false, error: `El archivo supera el tamaño máximo permitido (${MAX_FILE_SIZE / (1024 * 1024)} MB)` },
+        { status: 413 },
       );
     }
 

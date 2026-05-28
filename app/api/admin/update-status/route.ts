@@ -1,17 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendCertificadoListo } from "@/lib/email/send";
 
+const BodySchema = z.object({
+  requestId: z.string().uuid(),
+  newStatus: z.string().min(1).max(50),
+  deliveryDate: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { requestId, newStatus, deliveryDate, notes } = body as {
-      requestId: string;
-      newStatus: string;
-      deliveryDate: string;
-      notes: string;
-    };
+    const json = await request.json().catch(() => null);
+    const parsed = BodySchema.safeParse(json);
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, error: "Datos inválidos" }, { status: 400 });
+    }
+    const { requestId, newStatus, deliveryDate, notes } = parsed.data;
 
     // Verificar que es admin usando el server client (tiene cookies/sesión)
     const supabase = await createSupabaseServerClient();
@@ -44,8 +51,11 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
+      // No exponer detalles de Postgres al cliente: se loguea en servidor y
+      // devolvemos un mensaje genérico.
+      console.error("[update-status] RPC error", { code: error.code, message: error.message, details: error.details });
       return NextResponse.json(
-        { ok: false, error: `RPC: ${error.message} (code: ${error.code}, details: ${error.details})` },
+        { ok: false, error: "No se pudo actualizar el estado" },
         { status: 400 },
       );
     }
@@ -85,8 +95,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("update-status API error:", message);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error("update-status API error:", err);
+    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
   }
 }

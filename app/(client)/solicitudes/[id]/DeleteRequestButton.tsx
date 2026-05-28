@@ -13,6 +13,7 @@ import {
 import { Trash2, Loader2, AlertTriangle } from "lucide-react";
 import { deleteRequest } from "./actions";
 import { toast } from "sonner";
+import { isNextControlFlowError } from "@/lib/utils";
 
 interface Props {
   requestId: string;
@@ -27,11 +28,9 @@ export function DeleteRequestButton({ requestId, isDraft }: Props) {
     setDeleting(true);
     try {
       await deleteRequest(requestId);
-      // redirect() inside deleteRequest throws a special Next.js error — no toast needed
     } catch (err) {
+      if (isNextControlFlowError(err)) throw err;
       const msg = err instanceof Error ? err.message : "Error inesperado";
-      // Next.js redirect throws an error with digest "NEXT_REDIRECT" — ignore it
-      if (typeof msg === "string" && msg.includes("NEXT_REDIRECT")) return;
       toast.error(msg);
       setDeleting(false);
       setOpen(false);

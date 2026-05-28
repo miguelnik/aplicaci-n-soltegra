@@ -9,6 +9,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireSuperAdmin } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { isNextControlFlowError } from "@/lib/utils";
 
 export interface CreateTimeEntryInput {
   workerId?: string;            // si no se indica, el usuario actual
@@ -66,6 +67,7 @@ export async function createTimeEntry(
     revalidatePath("/admin/horas");
     return { ok: true, id: data.id };
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
@@ -92,6 +94,7 @@ export async function deleteTimeEntry(id: string): Promise<{ ok: boolean; error?
     revalidatePath("/admin/horas");
     return { ok: true };
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
@@ -119,6 +122,7 @@ export async function updateWorkerHourlyCost(
     revalidatePath("/admin/usuarios");
     return { ok: true };
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }

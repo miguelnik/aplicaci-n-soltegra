@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+const BodySchema = z.object({
+  requestId: z.string().uuid(),
+  assignedTo: z.string().uuid().nullable(),
+});
 
 // POST /api/admin/assign-worker
 // Asigna un trabajador (admin o superadmin) a una solicitud.
@@ -22,15 +28,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
   }
 
-  const body = await request.json();
-  const { requestId, assignedTo } = body as {
-    requestId: string;
-    assignedTo: string | null;
-  };
-
-  if (!requestId) {
-    return NextResponse.json({ ok: false, error: "Falta requestId" }, { status: 400 });
+  const parsed = BodySchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ ok: false, error: "Datos inválidos" }, { status: 400 });
   }
+  const { requestId, assignedTo } = parsed.data;
 
   // Si se asigna a alguien, verificar que es admin o superadmin
   if (assignedTo) {
@@ -52,11 +54,12 @@ export async function POST(request: NextRequest) {
   const admin = createSupabaseAdminClient();
   const { error } = await admin
     .from("certificate_requests")
-    .update({ assigned_to: assignedTo ?? null })
+    .update({ assigned_to: assignedTo })
     .eq("id", requestId);
 
   if (error) {
-    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    console.error("[assign-worker]", error);
+    return NextResponse.json({ ok: false, error: "No se pudo asignar el trabajador" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

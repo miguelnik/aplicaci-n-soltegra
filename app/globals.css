@@ -17,7 +17,7 @@
     --muted: 216 34% 93%;
     --muted-foreground: 211 11% 46%;
     --accent: 46 68% 47%;             /* #C9A227 */
-    --accent-foreground: 0 0% 100%;
+    --accent-foreground: 209 65% 17%; /* navy primario sobre oro: contraste ~7:1 (WCAG AAA) */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
     --border: 216 34% 88%;

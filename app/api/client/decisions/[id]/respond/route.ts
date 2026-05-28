@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+const BodySchema = z.object({
+  response: z.string().max(5000).optional().default(""),
+  status: z.enum(["approved", "rejected", "deferred"]),
+});
 
 // POST /api/client/decisions/[id]/respond
 // Permite al cliente responder a una decisión pendiente.
@@ -10,6 +16,9 @@ export async function POST(
 ) {
   const supabase = await createSupabaseServerClient();
   const { id } = await params;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) {
+    return NextResponse.json({ error: "ID inválido" }, { status: 400 });
+  }
 
   // Verificar sesión
   const {
@@ -31,14 +40,12 @@ export async function POST(
   }
 
   // Parsear body
-  const body = await req.json().catch(() => null);
-  const response = (body?.response ?? "").trim();
-  const decisionStatus = body?.status as string | undefined;
-  const validStatuses = ["approved", "rejected", "deferred"];
-
-  if (!validStatuses.includes(decisionStatus ?? "")) {
-    return NextResponse.json({ error: "Selecciona aprobar, rechazar o aplazar" }, { status: 400 });
+  const parsed = BodySchema.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Datos inválidos" }, { status: 400 });
   }
+  const response = parsed.data.response.trim();
+  const decisionStatus = parsed.data.status;
 
   // Verificar que la decisión existe, pertenece a la organización del cliente,
   // es visible al cliente y está pendiente

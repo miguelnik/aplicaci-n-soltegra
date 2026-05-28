@@ -6,6 +6,12 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
+const VALID_SOURCE_ENTITY_TYPES = ["decision", "incident", "site_visit"] as const;
+type SourceEntityType = (typeof VALID_SOURCE_ENTITY_TYPES)[number];
+
+// 25 MB es suficiente para fotos de obra a calidad alta tras compresión cliente.
+const MAX_FILE_SIZE = 25 * 1024 * 1024;
+
 export async function POST(request: Request) {
   try {
     // ── Autenticación y autorización ─────────────────────────────────────────
@@ -33,14 +39,32 @@ export async function POST(request: Request) {
     const caption = (formData.get("caption") as string | null)?.trim() || null;
     const takenAt = (formData.get("takenAt") as string | null)?.trim() || null;
     const visibleToClient = formData.get("visibleToClient") !== "0";
-    // Trazabilidad: entidad origen de la foto (opcional)
-    const sourceEntityType = (formData.get("sourceEntityType") as string | null) || null;
+    // Trazabilidad: entidad origen de la foto (opcional, pero allowlist estricta)
+    const rawSourceEntityType = (formData.get("sourceEntityType") as string | null) || null;
     const sourceEntityId   = (formData.get("sourceEntityId")   as string | null) || null;
+
+    let sourceEntityType: SourceEntityType | null = null;
+    if (rawSourceEntityType) {
+      if (!VALID_SOURCE_ENTITY_TYPES.includes(rawSourceEntityType as SourceEntityType)) {
+        return NextResponse.json(
+          { ok: false, error: "sourceEntityType inválido" },
+          { status: 400 },
+        );
+      }
+      sourceEntityType = rawSourceEntityType as SourceEntityType;
+    }
 
     if (!file || !requestId) {
       return NextResponse.json(
         { ok: false, error: "Faltan campos: file, requestId" },
         { status: 400 },
+      );
+    }
+
+    if (file.size === 0 || file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { ok: false, error: `El archivo supera el tamaño máximo permitido (${MAX_FILE_SIZE / (1024 * 1024)} MB)` },
+        { status: 413 },
       );
     }
 
@@ -106,8 +130,8 @@ export async function POST(request: Request) {
       is_visible_to_client: isAdmin ? visibleToClient : true,
       uploaded_by: user.id,
       uploaded_by_role: isAdmin ? "admin" : "client",
-      source_entity_type: sourceEntityType || null,
-      source_entity_id:   sourceEntityId   || null,
+      source_entity_type: sourceEntityType,
+      source_entity_id:   sourceEntityType ? (sourceEntityId || null) : null,
     });
 
     if (dbError) {

@@ -3,6 +3,7 @@
 // Accesible para clientes (de la organización) y administradores.
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -10,9 +11,17 @@ interface Params {
   params: Promise<{ id: string }>;
 }
 
+const BodySchema = z.object({
+  requestId: z.string().uuid(),
+  body: z.string().min(1).max(10000),
+});
+
 export async function POST(request: Request, { params }: Params) {
   try {
     const { id } = await params;
+    if (!/^[0-9a-f-]{36}$/i.test(id)) {
+      return NextResponse.json({ ok: false, error: "ID inválido" }, { status: 400 });
+    }
 
     // ── Autenticación ──────────────────────────────────────────────────────
     const supabase = await createSupabaseServerClient();
@@ -33,18 +42,11 @@ export async function POST(request: Request, { params }: Params) {
     }
 
     // ── Cuerpo de la petición ──────────────────────────────────────────────
-    const body = await request.json();
-    const { requestId, body: msgBody } = body as {
-      requestId?: string;
-      body?: string;
-    };
-
-    if (!requestId || !msgBody?.trim()) {
-      return NextResponse.json(
-        { ok: false, error: "requestId y body son obligatorios" },
-        { status: 400 },
-      );
+    const parsed = BodySchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, error: "Datos inválidos" }, { status: 400 });
     }
+    const { requestId, body: msgBody } = parsed.data;
 
     // ── Lookups con service role (evita bloqueos de RLS) ──────────────────
     const admin = createSupabaseAdminClient();
@@ -88,15 +90,16 @@ export async function POST(request: Request, { params }: Params) {
     });
 
     if (dbError) {
+      console.error("[modifications/message]", dbError);
       return NextResponse.json(
-        { ok: false, error: "Error al enviar mensaje: " + dbError.message },
+        { ok: false, error: "Error al enviar mensaje" },
         { status: 500 },
       );
     }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error("[modifications/message]", err);
+    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
   }
 }

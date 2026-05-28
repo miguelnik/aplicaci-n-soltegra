@@ -3,6 +3,7 @@
 // Solo puede responder quien NO la creó (rol opuesto al solicitante).
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -10,9 +11,16 @@ interface Params {
   params: Promise<{ id: string }>;
 }
 
+const BodySchema = z.object({
+  action: z.enum(["approved", "rejected"]),
+});
+
 export async function POST(request: Request, { params }: Params) {
   try {
     const { id } = await params;
+    if (!/^[0-9a-f-]{36}$/i.test(id)) {
+      return NextResponse.json({ ok: false, error: "ID inválido" }, { status: 400 });
+    }
 
     // ── Autenticación ──────────────────────────────────────────────────────
     const supabase = await createSupabaseServerClient();
@@ -33,15 +41,11 @@ export async function POST(request: Request, { params }: Params) {
     }
 
     // ── Validar acción ─────────────────────────────────────────────────────
-    const body = await request.json();
-    const { action } = body as { action?: "approved" | "rejected" };
-
-    if (!action || !["approved", "rejected"].includes(action)) {
-      return NextResponse.json(
-        { ok: false, error: "action debe ser 'approved' o 'rejected'" },
-        { status: 400 },
-      );
+    const parsed = BodySchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, error: "Datos inválidos" }, { status: 400 });
     }
+    const { action } = parsed.data;
 
     // ── Lookups con service role (evita bloqueos de RLS) ──────────────────
     const admin = createSupabaseAdminClient();
@@ -103,15 +107,16 @@ export async function POST(request: Request, { params }: Params) {
       .eq("id", id);
 
     if (dbError) {
+      console.error("[modifications/respond]", dbError);
       return NextResponse.json(
-        { ok: false, error: "Error al actualizar: " + dbError.message },
+        { ok: false, error: "Error al actualizar" },
         { status: 500 },
       );
     }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error("[modifications/respond]", err);
+    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
   }
 }

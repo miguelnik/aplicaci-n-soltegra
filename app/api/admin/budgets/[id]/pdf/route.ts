@@ -7,17 +7,32 @@ import path from "path";
 import { requireAdmin } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { renderBudgetPdf } from "@/lib/budgets/pdf";
+import { isNextControlFlowError } from "@/lib/utils";
 import type { Budget, BudgetItem, CompanySettings } from "@/lib/budgets/types";
 
 interface Params {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(_request: Request, { params }: Params) {
+// Cache del logo entre peticiones — el fichero es estático.
+let cachedLogoDataUrl: string | null | undefined;
+async function getLogoDataUrl(): Promise<string | null> {
+  if (cachedLogoDataUrl !== undefined) return cachedLogoDataUrl;
   try {
-    await requireAdmin();
-    const { id } = await params;
+    const logoPath = path.join(process.cwd(), "public", "logo.png");
+    const buf = await fs.readFile(logoPath);
+    cachedLogoDataUrl = `data:image/png;base64,${buf.toString("base64")}`;
+  } catch {
+    cachedLogoDataUrl = null;
+  }
+  return cachedLogoDataUrl;
+}
 
+export async function GET(_request: Request, { params }: Params) {
+  await requireAdmin();
+  const { id } = await params;
+
+  try {
     const admin = createSupabaseAdminClient();
 
     const { data: budgetRow, error: bErr } = await admin
@@ -40,21 +55,11 @@ export async function GET(_request: Request, { params }: Params) {
     const { data: companyRow } = await admin.from("company_settings").select("*").limit(1).maybeSingle();
     const company = (companyRow ?? {}) as CompanySettings;
 
-    // Cargar logo desde /public/logo.png a base64
-    let logoDataUrl: string | null = null;
-    try {
-      const logoPath = path.join(process.cwd(), "public", "logo.png");
-      const buf = await fs.readFile(logoPath);
-      logoDataUrl = `data:image/png;base64,${buf.toString("base64")}`;
-    } catch {
-      // Si no hay logo, se renderiza el nombre de la empresa en su lugar
-    }
+    const logoDataUrl = await getLogoDataUrl();
 
     const pdfBuffer = await renderBudgetPdf({ budget, items, company, logoDataUrl });
 
     const filename = `${budget.number ?? "presupuesto"}.pdf`;
-    // Convertir Buffer a Uint8Array para que NextResponse lo acepte sin
-    // problemas de tipos en Node 18+ runtime.
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {
@@ -64,6 +69,7 @@ export async function GET(_request: Request, { params }: Params) {
       },
     });
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     const message = err instanceof Error ? err.message : "Error interno";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
+const BodySchema = z.object({
+  requestIds: z.array(z.string().uuid()).min(1).max(500),
+  isPaid: z.boolean(),
+});
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { requestIds, isPaid } = body as {
-      requestIds: string[];
-      isPaid: boolean;
-    };
-
-    if (!requestIds?.length) {
-      return NextResponse.json({ ok: false, error: "No se seleccionaron solicitudes" }, { status: 400 });
+    const parsed = BodySchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, error: "Datos inválidos" }, { status: 400 });
     }
+    const { requestIds, isPaid } = parsed.data;
 
     // Verificar que es admin
     const supabase = await createSupabaseServerClient();
@@ -45,15 +47,16 @@ export async function POST(request: NextRequest) {
       .in("id", requestIds);
 
     if (error) {
+      console.error("[update-payment]", error);
       return NextResponse.json(
-        { ok: false, error: `DB: ${error.message}` },
+        { ok: false, error: "No se pudo actualizar el estado de pago" },
         { status: 400 },
       );
     }
 
     return NextResponse.json({ ok: true, count: requestIds.length });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error("[update-payment]", err);
+    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
   }
 }

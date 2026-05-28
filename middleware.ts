@@ -7,7 +7,12 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Excluye archivos estáticos, imágenes y favicon.
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // Excluimos:
+    //  - assets estáticos de Next y archivos con extensión de imagen
+    //  - /api/*    → cada route handler hace su propio auth.getUser(); evitamos
+    //                una llamada de red extra a Supabase por cada request.
+    //  - /auth/*   → /auth/callback hace exchangeCodeForSession por sí mismo y
+    //                no necesita el refresh previo.
+    "/((?!api/|auth/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

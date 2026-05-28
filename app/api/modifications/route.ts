@@ -3,8 +3,16 @@
 // Accesible para clientes (de la organización) y administradores.
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+
+const BodySchema = z.object({
+  requestId: z.string().uuid(),
+  title: z.string().min(1).max(200),
+  description: z.string().max(10000).nullable().optional(),
+  cost: z.number().finite().nullable().optional(),
+});
 
 export async function POST(request: Request) {
   try {
@@ -25,20 +33,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Sin perfil" }, { status: 403 });
     }
 
-    const body = await request.json();
-    const { requestId, title, description, cost } = body as {
-      requestId?: string;
-      title?: string;
-      description?: string | null;
-      cost?: number | null;
-    };
-
-    if (!requestId || !title?.trim()) {
-      return NextResponse.json(
-        { ok: false, error: "requestId y title son obligatorios" },
-        { status: 400 },
-      );
+    const parsed = BodySchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, error: "Datos inválidos" }, { status: 400 });
     }
+    const { requestId, title, description, cost } = parsed.data;
 
     // Verificar que la solicitud existe y el usuario tiene acceso
     // Usamos service role para evitar bloqueos de RLS
@@ -75,15 +74,16 @@ export async function POST(request: Request) {
       .single();
 
     if (dbError) {
+      console.error("[modifications]", dbError);
       return NextResponse.json(
-        { ok: false, error: "Error al crear modificación: " + dbError.message },
+        { ok: false, error: "Error al crear modificación" },
         { status: 500 },
       );
     }
 
     return NextResponse.json({ ok: true, id: inserted.id });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error("[modifications]", err);
+    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
   }
 }

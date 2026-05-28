@@ -1,7 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { sendNuevoMensaje } from "@/lib/email/send";
+
+const BodySchema = z.object({
+  requestId: z.string().uuid(),
+  body: z.string().min(1).max(10000),
+});
+
+// Cache en proceso para evitar pegarle a auth.admin.getUserById en cada mensaje.
+// TTL corto: si el cliente cambia de email no tardamos en propagarlo.
+const USER_EMAIL_TTL_MS = 5 * 60 * 1000; // 5 min
+const userEmailCache = new Map<string, { email: string; expires: number }>();
+
+async function getCachedUserEmail(userId: string): Promise<string> {
+  const cached = userEmailCache.get(userId);
+  if (cached && cached.expires > Date.now()) return cached.email;
+
+  const adminClient = createSupabaseAdminClient();
+  const { data: authUser } = await adminClient.auth.admin.getUserById(userId);
+  const email = authUser?.user?.email ?? "";
+  userEmailCache.set(userId, { email, expires: Date.now() + USER_EMAIL_TTL_MS });
+  return email;
+}
 
 /**
  * POST /api/messages
@@ -13,17 +35,11 @@ import { sendNuevoMensaje } from "@/lib/email/send";
  */
 export async function POST(request: NextRequest) {
   try {
-    const { requestId, body } = (await request.json()) as {
-      requestId: string;
-      body: string;
-    };
-
-    if (!requestId || !body?.trim()) {
-      return NextResponse.json(
-        { ok: false, error: "Faltan datos (requestId, body)" },
-        { status: 400 },
-      );
+    const parsed = BodySchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, error: "Datos inválidos" }, { status: 400 });
     }
+    const { requestId, body } = parsed.data;
 
     const supabase = await createSupabaseServerClient();
     const {
@@ -59,8 +75,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
+      console.error("[messages] insert error", error);
       return NextResponse.json(
-        { ok: false, error: error.message },
+        { ok: false, error: "No se pudo enviar el mensaje" },
         { status: 400 },
       );
     }
@@ -79,13 +96,8 @@ export async function POST(request: NextRequest) {
           (await supabase.from("profiles").select("full_name").eq("id", user.id).single())
             .data?.full_name ?? (authorRole === "admin" ? "Soltegra" : "Cliente");
 
-        // Email del cliente propietario (via auth.admin)
-        let clientEmail = "";
-        if (req.created_by) {
-          const adminClient = createSupabaseAdminClient();
-          const { data: authUser } = await adminClient.auth.admin.getUserById(req.created_by);
-          clientEmail = authUser?.user?.email ?? "";
-        }
+        // Email del cliente propietario (cache 5 min para evitar round-trip por mensaje)
+        const clientEmail = req.created_by ? await getCachedUserEmail(req.created_by) : "";
 
         await sendNuevoMensaje({
           authorRole: profile.role as "admin" | "client",
@@ -103,7 +115,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, id: data.id, createdAt: data.created_at });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error("[messages]", err);
+    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
   }
 }

@@ -4,6 +4,7 @@
 // Pueden editar el creador o el admin.
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
@@ -11,9 +12,18 @@ interface Params {
   params: Promise<{ id: string }>;
 }
 
+const PatchSchema = z.object({
+  cost: z.number().finite().nullable().optional(),
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().max(10000).nullable().optional(),
+});
+
 export async function PATCH(request: Request, { params }: Params) {
   try {
     const { id } = await params;
+    if (!/^[0-9a-f-]{36}$/i.test(id)) {
+      return NextResponse.json({ ok: false, error: "ID inválido" }, { status: 400 });
+    }
 
     // ── Autenticación ──────────────────────────────────────────────────────
     const supabase = await createSupabaseServerClient();
@@ -34,16 +44,16 @@ export async function PATCH(request: Request, { params }: Params) {
     }
 
     // ── Cuerpo ────────────────────────────────────────────────────────────
-    const body = await request.json() as {
-      cost?: number | null;
-      title?: string;
-      description?: string | null;
-    };
+    const parsed = PatchSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, error: "Datos inválidos" }, { status: 400 });
+    }
+    const body = parsed.data;
 
     // Solo se actualizan los campos que vengan en el body
     const patch: Record<string, unknown> = {};
     if ("cost"        in body) patch.cost        = body.cost ?? null;
-    if ("title"       in body) patch.title       = (body.title ?? "").trim() || undefined;
+    if ("title"       in body) patch.title       = body.title?.trim();
     if ("description" in body) patch.description = body.description?.trim() || null;
 
     if (Object.keys(patch).length === 0) {
@@ -96,15 +106,16 @@ export async function PATCH(request: Request, { params }: Params) {
       .eq("id", id);
 
     if (dbError) {
+      console.error("[modifications PATCH]", dbError);
       return NextResponse.json(
-        { ok: false, error: "Error al actualizar: " + dbError.message },
+        { ok: false, error: "Error al actualizar" },
         { status: 500 },
       );
     }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error("[modifications PATCH]", err);
+    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
   }
 }

@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const VALID_ENTITY_TYPES = ["decision", "incident", "site_visit"] as const;
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
 
 type EntityType = (typeof VALID_ENTITY_TYPES)[number];
 
@@ -59,6 +60,13 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { ok: false, error: "Solo se permiten imágenes y PDF" },
         { status: 400 },
+      );
+    }
+
+    if (file.size === 0 || file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { ok: false, error: `El archivo supera el tamaño máximo permitido (${MAX_FILE_SIZE / (1024 * 1024)} MB)` },
+        { status: 413 },
       );
     }
 

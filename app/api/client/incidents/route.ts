@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-const VALID_SEVERITIES = ["low", "medium", "high", "critical"];
+const BodySchema = z.object({
+  requestId: z.string().uuid(),
+  title: z.string().min(1).max(200),
+  description: z.string().max(5000).optional().default(""),
+  severity: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+});
 
 export async function POST(request: Request) {
   try {
@@ -24,15 +30,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
     }
 
-    const body = await request.json().catch(() => null);
-    const requestId = body?.requestId as string | undefined;
-    const title = (body?.title ?? "").trim();
-    const description = (body?.description ?? "").trim();
-    const severity = VALID_SEVERITIES.includes(body?.severity) ? body.severity : "medium";
-
-    if (!requestId || !title) {
-      return NextResponse.json({ ok: false, error: "Faltan datos obligatorios" }, { status: 400 });
+    const parsed = BodySchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, error: "Datos inválidos" }, { status: 400 });
     }
+    const { requestId, title, description, severity } = parsed.data;
 
     const { data: req } = await supabase
       .from("certificate_requests")
@@ -49,8 +51,8 @@ export async function POST(request: Request) {
       .from("expedition_incidents")
       .insert({
         request_id: requestId,
-        title,
-        description: description || null,
+        title: title.trim(),
+        description: description.trim() || null,
         severity,
         status: "open",
         is_visible_to_client: true,
@@ -59,12 +61,13 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+      console.error("[client/incidents]", error);
+      return NextResponse.json({ ok: false, error: "No se pudo crear la incidencia" }, { status: 400 });
     }
 
     return NextResponse.json({ ok: true, id: data.id });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Error interno";
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error("[client/incidents]", err);
+    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
   }
 }

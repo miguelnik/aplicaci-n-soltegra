@@ -8,6 +8,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { isNextControlFlowError } from "@/lib/utils";
 import type {
   FinanceKind,
   IncomeCategory,
@@ -41,7 +42,7 @@ export async function createFinanceEntry(
     if (!input.kind || !["income", "expense"].includes(input.kind)) {
       return { ok: false, error: "kind inválido" };
     }
-    if (input.amount == null || Number.isNaN(input.amount) || input.amount < 0) {
+    if (input.amount == null || Number.isNaN(input.amount) || input.amount <= 0) {
       return { ok: false, error: "Importe inválido" };
     }
     if (!input.entry_date) {
@@ -85,6 +86,7 @@ export async function createFinanceEntry(
 
     return { ok: true, id: data.id };
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
@@ -113,6 +115,7 @@ export async function toggleFinanceEntrySettled(
     revalidatePath("/admin/clientes", "layout");
     return { ok: true };
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
@@ -133,6 +136,7 @@ export async function deleteFinanceEntry(
     revalidatePath("/admin/clientes", "layout");
     return { ok: true };
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
@@ -157,7 +161,7 @@ export async function updateFinanceEntry(
 
     const payload: Record<string, unknown> = {};
     if ("amount" in patch && patch.amount != null) {
-      if (Number.isNaN(patch.amount) || patch.amount < 0) {
+      if (Number.isNaN(patch.amount) || patch.amount <= 0) {
         return { ok: false, error: "Importe inválido" };
       }
       payload.amount = patch.amount;
@@ -191,6 +195,7 @@ export async function updateFinanceEntry(
     revalidatePath("/admin/clientes", "layout");
     return { ok: true };
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }

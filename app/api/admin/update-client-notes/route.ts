@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
+const BodySchema = z.object({
+  requestId: z.string().uuid(),
+  clientNotes: z.string().max(5000).optional().default(""),
+});
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { requestId, clientNotes } = body as {
-      requestId: string;
-      clientNotes: string;
-    };
+    const parsed = BodySchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, error: "Datos inválidos" }, { status: 400 });
+    }
+    const { requestId, clientNotes } = parsed.data;
 
     // Verificar que es admin
     const supabase = await createSupabaseServerClient();
@@ -37,12 +43,13 @@ export async function POST(request: NextRequest) {
       .eq("id", requestId);
 
     if (error) {
-      return NextResponse.json({ ok: false, error: `DB: ${error.message}` }, { status: 400 });
+      console.error("[update-client-notes]", error);
+      return NextResponse.json({ ok: false, error: "No se pudieron guardar las notas" }, { status: 400 });
     }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error("[update-client-notes]", err);
+    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
   }
 }

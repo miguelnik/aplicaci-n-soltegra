@@ -13,6 +13,7 @@ import {
 import { Trash2, Loader2, AlertTriangle } from "lucide-react";
 import { deleteAdminRequest } from "./actions";
 import { toast } from "sonner";
+import { isNextControlFlowError } from "@/lib/utils";
 
 interface Props {
   requestId: string;
@@ -28,8 +29,10 @@ export function DeleteAdminRequestButton({ requestId, referenceCode }: Props) {
     try {
       await deleteAdminRequest(requestId);
     } catch (err) {
+      // El redirect() de la server action llega como error con digest NEXT_REDIRECT;
+      // hay que dejarlo propagar para que Next.js complete la navegación.
+      if (isNextControlFlowError(err)) throw err;
       const msg = err instanceof Error ? err.message : "Error inesperado";
-      if (typeof msg === "string" && msg.includes("NEXT_REDIRECT")) return;
       toast.error(msg);
       setDeleting(false);
       setOpen(false);

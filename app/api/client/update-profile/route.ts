@@ -1,19 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
+const BodySchema = z.object({
+  fullName: z.string().max(200).optional().default(""),
+  phone: z.string().max(50).optional().default(""),
+  orgName: z.string().max(200).optional().default(""),
+  orgCif: z.string().max(50).optional().default(""),
+  orgEmail: z.string().max(200).optional().default(""),
+  orgPhone: z.string().max(50).optional().default(""),
+  orgAddress: z.string().max(500).optional().default(""),
+});
+
 export async function POST(request: NextRequest) {
   try {
-    const { fullName, phone, orgName, orgCif, orgEmail, orgPhone, orgAddress } =
-      (await request.json()) as {
-        fullName: string;
-        phone: string;
-        orgName: string;
-        orgCif: string;
-        orgEmail: string;
-        orgPhone: string;
-        orgAddress: string;
-      };
+    const json = await request.json().catch(() => null);
+    const parsed = BodySchema.safeParse(json);
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, error: "Datos inválidos" }, { status: 400 });
+    }
+    const { fullName, phone, orgName, orgCif, orgEmail, orgPhone, orgAddress } = parsed.data;
 
     const supabase = await createSupabaseServerClient();
     const {
@@ -22,6 +29,17 @@ export async function POST(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    }
+
+    // Comprobar rol antes de tocar nada — esta ruta es exclusivamente para clientes.
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("organization_id, role")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile || profile.role !== "client") {
+      return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 403 });
     }
 
     // 1. Actualizar perfil personal (RLS permite al usuario actualizar el suyo)
@@ -36,20 +54,16 @@ export async function POST(request: NextRequest) {
 
     if (profileError) {
       return NextResponse.json(
-        { ok: false, error: `Perfil: ${profileError.message}` },
+        { ok: false, error: "No se pudo actualizar el perfil" },
         { status: 400 },
       );
     }
 
-    // 2. Obtener org_id del perfil
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("organization_id, role")
-      .eq("id", user.id)
-      .single();
-
-    if (profile?.organization_id) {
-      // 3. Actualizar datos de la organización usando admin client
+    // 2. Actualizar datos de la organización SOLO si el usuario pertenece a una.
+    //    Nota intencionada: todos los miembros de la organización comparten estos
+    //    datos (ver copia del formulario). Si en el futuro se quiere restringir
+    //    a un "owner", añadir profiles.is_org_owner y filtrar aquí.
+    if (profile.organization_id) {
       const adminClient = createSupabaseAdminClient();
       const { error: orgError } = await adminClient
         .from("organizations")
@@ -65,15 +79,14 @@ export async function POST(request: NextRequest) {
 
       if (orgError) {
         return NextResponse.json(
-          { ok: false, error: `Organización: ${orgError.message}` },
+          { ok: false, error: "No se pudieron actualizar los datos de facturación" },
           { status: 400 },
         );
       }
     }
 
     return NextResponse.json({ ok: true });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ ok: false, error: "Error interno" }, { status: 500 });
   }
 }

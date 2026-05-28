@@ -7,6 +7,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin, requireSuperAdmin } from "@/lib/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { isNextControlFlowError } from "@/lib/utils";
 import type { BudgetStatus, BudgetItem, BudgetTemplateItem } from "./types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -71,6 +72,7 @@ export async function updateCompanySettings(
     revalidatePath("/admin/ajustes/empresa");
     return { ok: true };
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
@@ -134,6 +136,7 @@ export async function createBudgetTemplate(
     revalidatePath("/admin/presupuestos/plantillas");
     return { ok: true, id: tpl.id };
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
@@ -159,27 +162,26 @@ export async function updateBudgetTemplate(
       .eq("id", id);
     if (updErr) return { ok: false, error: updErr.message };
 
-    // Reemplazar líneas completas
-    await admin.from("budget_template_items").delete().eq("template_id", id);
-    if (input.items.length > 0) {
-      const rows = input.items.map((it, idx) => ({
-        template_id: id,
-        position: idx,
-        concept: it.concept.trim(),
-        description: it.description?.trim() || null,
-        quantity: it.quantity,
-        unit: it.unit?.trim() || "ud",
-        unit_price: it.unitPrice,
-        discount_pct: it.discountPct ?? 0,
-      }));
-      const { error: itemsErr } = await admin.from("budget_template_items").insert(rows);
-      if (itemsErr) return { ok: false, error: itemsErr.message };
-    }
+    // Reemplazar líneas completas en una sola transacción atómica.
+    const itemsJson = input.items.map((it) => ({
+      concept: it.concept.trim(),
+      description: it.description?.trim() || null,
+      quantity: it.quantity,
+      unit: it.unit?.trim() || "ud",
+      unit_price: it.unitPrice,
+      discount_pct: it.discountPct ?? 0,
+    }));
+    const { error: rpcErr } = await admin.rpc("replace_budget_template_items", {
+      p_template_id: id,
+      p_items: itemsJson,
+    });
+    if (rpcErr) return { ok: false, error: rpcErr.message };
 
     revalidatePath("/admin/presupuestos/plantillas");
     revalidatePath(`/admin/presupuestos/plantillas/${id}`);
     return { ok: true };
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
@@ -193,6 +195,7 @@ export async function deleteBudgetTemplate(id: string): Promise<{ ok: boolean; e
     revalidatePath("/admin/presupuestos/plantillas");
     return { ok: true };
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
@@ -334,6 +337,7 @@ export async function createBudget(
     revalidatePath("/admin/presupuestos");
     return { ok: true, id: budget.id, number: budget.number ?? undefined };
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
@@ -394,6 +398,7 @@ export async function updateBudget(
     revalidatePath("/admin/presupuestos");
     return { ok: true };
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
@@ -420,6 +425,7 @@ export async function setBudgetStatus(
     revalidatePath("/admin/presupuestos");
     return { ok: true };
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
@@ -433,6 +439,7 @@ export async function deleteBudget(id: string): Promise<{ ok: boolean; error?: s
     revalidatePath("/admin/presupuestos");
     return { ok: true };
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
@@ -459,27 +466,25 @@ export async function saveBudgetItems(
     await requireAdmin();
     const admin = createSupabaseAdminClient();
 
-    // Estrategia simple: borrar todas y reinsertar (mantiene el position correcto)
-    await admin.from("budget_items").delete().eq("budget_id", budgetId);
-
-    if (input.items.length > 0) {
-      const rows = input.items.map((it, idx) => ({
-        budget_id: budgetId,
-        position: idx,
-        concept: it.concept.trim(),
-        description: it.description?.trim() || null,
-        quantity: it.quantity,
-        unit: it.unit?.trim() || "ud",
-        unit_price: it.unitPrice,
-        discount_pct: it.discountPct ?? 0,
-      }));
-      const { error } = await admin.from("budget_items").insert(rows);
-      if (error) return { ok: false, error: error.message };
-    }
+    // Reemplazo atómico vía RPC: si la inserción falla, el delete se revierte.
+    const itemsJson = input.items.map((it) => ({
+      concept: it.concept.trim(),
+      description: it.description?.trim() || null,
+      quantity: it.quantity,
+      unit: it.unit?.trim() || "ud",
+      unit_price: it.unitPrice,
+      discount_pct: it.discountPct ?? 0,
+    }));
+    const { error: rpcErr } = await admin.rpc("replace_budget_items", {
+      p_budget_id: budgetId,
+      p_items: itemsJson,
+    });
+    if (rpcErr) return { ok: false, error: rpcErr.message };
 
     revalidatePath(`/admin/presupuestos/${budgetId}`);
     return { ok: true };
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
@@ -555,6 +560,7 @@ export async function convertBudgetToProject(
     revalidatePath("/admin/solicitudes");
     return { ok: true, requestId: created.id };
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
@@ -604,6 +610,7 @@ export async function createBudgetConcept(
     revalidatePath("/admin/presupuestos/biblioteca");
     return { ok: true, id: data.id };
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
@@ -633,6 +640,7 @@ export async function updateBudgetConcept(
     revalidatePath("/admin/presupuestos/biblioteca");
     return { ok: true };
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
@@ -646,6 +654,7 @@ export async function deleteBudgetConcept(id: string): Promise<{ ok: boolean; er
     revalidatePath("/admin/presupuestos/biblioteca");
     return { ok: true };
   } catch (err) {
+    if (isNextControlFlowError(err)) throw err;
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
