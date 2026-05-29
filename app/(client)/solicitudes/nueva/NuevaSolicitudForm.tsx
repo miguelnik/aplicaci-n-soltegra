@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, CalendarClock, Loader2 } from "lucide-react";
 
 interface Props {
   schema: FormSchema;
@@ -253,21 +253,30 @@ export function NuevaSolicitudForm({
 
       <div className="space-y-6">
         {/* Fecha máxima de entrega */}
-        <div className="rounded-lg border bg-muted/30 p-4">
-          <Label htmlFor="client_deadline" className="text-sm font-medium">
-            Fecha máxima de entrega{" "}
-            <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
-          </Label>
-          <p className="mb-2 text-xs text-muted-foreground">
-            Si necesitas el certificado antes de una fecha concreta, indícala aquí.
-          </p>
-          <Input
-            id="client_deadline"
-            type="date"
-            value={deadline}
-            onChange={(e) => { setDeadline(e.target.value); setIsDirty(true); }}
-            className="max-w-[200px]"
-          />
+        <div className="rounded-lg border bg-card p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-primary/10">
+                <CalendarClock className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <Label htmlFor="client_deadline" className="text-sm font-medium">
+                  Fecha máxima de entrega{" "}
+                  <span className="text-xs font-normal text-muted-foreground">(opcional)</span>
+                </Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Indícala solo si tienes un compromiso concreto.
+                </p>
+              </div>
+            </div>
+            <Input
+              id="client_deadline"
+              type="date"
+              value={deadline}
+              onChange={(e) => { setDeadline(e.target.value); setIsDirty(true); }}
+              className="w-full sm:max-w-[200px]"
+            />
+          </div>
         </div>
 
         <FormRenderer

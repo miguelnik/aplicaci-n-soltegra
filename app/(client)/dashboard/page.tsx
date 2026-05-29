@@ -4,7 +4,7 @@ import { es } from "date-fns/locale";
 import { requireClient } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { StatusBadge } from "@/components/client/StatusBadge";
 import {
   PlusCircle,
@@ -16,6 +16,8 @@ import {
   Loader2,
   Send,
   Copy,
+  ArrowRight,
+  AlertCircle,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -43,6 +45,55 @@ export default async function ClientDashboardPage({ searchParams }: Props) {
     delivered: requests.filter((r) => r.status === "delivered").length,
     draft: requests.filter((r) => r.status === "draft").length,
   };
+  const requestNeedingInfo = requests.find((r) => r.status === "awaiting_info");
+  const deliveredWithPdf = requests.find((r) => r.status === "delivered" && r.certificate_pdf_path);
+  const draftRequest = requests.find((r) => r.status === "draft");
+  const activeRequest = requests.find((r) => !["draft", "delivered", "cancelled"].includes(r.status));
+  const nextAction = requestNeedingInfo
+    ? {
+        title: "Soltegra necesita información para continuar",
+        description: requestNeedingInfo.property_address ?? requestNeedingInfo.reference_code ?? "Proyecto pendiente",
+        href: `/solicitudes/${requestNeedingInfo.id}`,
+        cta: "Responder ahora",
+        icon: AlertCircle,
+        tone: "border-amber-200 bg-amber-50 text-amber-900",
+      }
+    : deliveredWithPdf
+      ? {
+          title: "Tienes un certificado listo para descargar",
+          description: deliveredWithPdf.property_address ?? deliveredWithPdf.reference_code ?? "Proyecto entregado",
+          href: `/solicitudes/${deliveredWithPdf.id}`,
+          cta: "Ver entrega",
+          icon: Download,
+          tone: "border-emerald-200 bg-emerald-50 text-emerald-900",
+        }
+      : draftRequest
+        ? {
+            title: "Tienes una solicitud pendiente de enviar",
+            description: draftRequest.property_address ?? "Borrador sin dirección",
+            href: `/solicitudes/${draftRequest.id}`,
+            cta: "Continuar solicitud",
+            icon: Send,
+            tone: "border-slate-200 bg-white text-foreground",
+          }
+        : activeRequest
+          ? {
+              title: "Tu proyecto sigue en marcha",
+              description: activeRequest.property_address ?? activeRequest.reference_code ?? "Proyecto activo",
+              href: `/solicitudes/${activeRequest.id}`,
+              cta: "Ver estado",
+              icon: Clock,
+              tone: "border-blue-200 bg-blue-50 text-blue-900",
+            }
+          : {
+              title: "Empieza creando una nueva solicitud",
+              description: "Prepara los datos del inmueble y sube la documentación inicial.",
+              href: "/solicitudes/nueva",
+              cta: "Nueva solicitud",
+              icon: PlusCircle,
+              tone: "border-primary/20 bg-white text-foreground",
+            };
+  const NextActionIcon = nextAction.icon;
 
   let filtered = requests;
   if (filterStatus) {
@@ -154,6 +205,26 @@ export default async function ClientDashboardPage({ searchParams }: Props) {
           </Card>
         </Link>
       </div>
+
+      <Link href={nextAction.href} className="block">
+        <Card className={`border transition-shadow hover:shadow-md ${nextAction.tone}`}>
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/70">
+                <NextActionIcon className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold">{nextAction.title}</p>
+                <p className="truncate text-sm opacity-80">{nextAction.description}</p>
+              </div>
+            </div>
+            <span className="inline-flex items-center gap-1 text-sm font-semibold">
+              {nextAction.cta}
+              <ArrowRight className="h-4 w-4" />
+            </span>
+          </CardContent>
+        </Card>
+      </Link>
 
       {/* Buscador */}
       <form className="relative">

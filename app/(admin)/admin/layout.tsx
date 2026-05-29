@@ -4,21 +4,8 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
-import {
-  FileText,
-  LayoutDashboard,
-  LogOut,
-  Users,
-  Building2,
-  Briefcase,
-  Wallet,
-  Clock,
-  Target,
-  ListChecks,
-  Receipt,
-  Settings,
-} from "lucide-react";
-import { AdminMobileNav } from "@/components/admin/MobileNav";
+import { LogOut } from "lucide-react";
+import { AdminMobileNav, AdminSidebarNav } from "@/components/admin/MobileNav";
 
 async function signOut() {
   "use server";
@@ -35,7 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="flex min-h-screen flex-col md:flex-row">
       {/* Mobile header */}
       <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b bg-background px-4 md:hidden">
-        <AdminMobileNav />
+        <AdminMobileNav isSuperadmin={isSuper} />
         <Link href="/admin/dashboard">
           <Image
             src="/logo.png"
@@ -67,77 +54,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             />
           </Link>
         </div>
-        <nav className="flex flex-1 flex-col gap-1 p-3">
-          <Button variant="ghost" size="sm" className="justify-start" asChild>
-            <Link href="/admin/dashboard">
-              <LayoutDashboard className="h-4 w-4" />
-              Dashboard
-            </Link>
-          </Button>
-          <Button variant="ghost" size="sm" className="justify-start" asChild>
-            <Link href="/admin/solicitudes">
-              <FileText className="h-4 w-4" />
-              Proyectos
-            </Link>
-          </Button>
-          <Button variant="ghost" size="sm" className="justify-start" asChild>
-            <Link href="/admin/clientes">
-              <Building2 className="h-4 w-4" />
-              Clientes
-            </Link>
-          </Button>
-          <Button variant="ghost" size="sm" className="justify-start" asChild>
-            <Link href="/admin/usuarios">
-              <Users className="h-4 w-4" />
-              Usuarios
-            </Link>
-          </Button>
-          <Button variant="ghost" size="sm" className="justify-start" asChild>
-            <Link href="/admin/servicios">
-              <Briefcase className="h-4 w-4" />
-              Servicios
-            </Link>
-          </Button>
-          <Button variant="ghost" size="sm" className="justify-start" asChild>
-            <Link href="/admin/tareas">
-              <ListChecks className="h-4 w-4" />
-              Tareas
-            </Link>
-          </Button>
-          <Button variant="ghost" size="sm" className="justify-start" asChild>
-            <Link href="/admin/horas">
-              <Clock className="h-4 w-4" />
-              Horas
-            </Link>
-          </Button>
-          <Button variant="ghost" size="sm" className="justify-start" asChild>
-            <Link href="/admin/crm">
-              <Target className="h-4 w-4" />
-              CRM
-            </Link>
-          </Button>
-          <Button variant="ghost" size="sm" className="justify-start" asChild>
-            <Link href="/admin/presupuestos">
-              <Receipt className="h-4 w-4" />
-              Presupuestos
-            </Link>
-          </Button>
-          <Button variant="ghost" size="sm" className="justify-start" asChild>
-            <Link href="/admin/contabilidad">
-              <Wallet className="h-4 w-4" />
-              Contabilidad
-            </Link>
-          </Button>
-          {isSuper && (
-            <Button variant="ghost" size="sm" className="justify-start" asChild>
-              <Link href="/admin/ajustes/empresa">
-                <Settings className="h-4 w-4" />
-                Ajustes empresa
-              </Link>
-            </Button>
-          )}
-        </nav>
+        <AdminSidebarNav isSuperadmin={isSuper} />
         <div className="border-t p-3">
+          <div className="mb-2 rounded-md bg-muted/60 px-3 py-2">
+            <p className="truncate text-sm font-medium">{me.full_name ?? "Administrador"}</p>
+            <p className="text-xs text-muted-foreground">
+              {isSuper ? "Superadministrador" : "Administrador"}
+            </p>
+          </div>
           <form action={signOut}>
             <Button variant="ghost" size="sm" className="w-full justify-start" type="submit">
               <LogOut className="h-4 w-4" />

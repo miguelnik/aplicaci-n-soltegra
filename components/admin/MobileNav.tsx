@@ -16,25 +16,101 @@ import {
   Target,
   ListChecks,
   Receipt,
+  Settings,
 } from "lucide-react";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 
-const links = [
-  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/solicitudes", label: "Proyectos", icon: FileText },
-  { href: "/admin/clientes", label: "Clientes", icon: Building2 },
-  { href: "/admin/usuarios", label: "Usuarios", icon: Users },
-  { href: "/admin/servicios", label: "Servicios", icon: Briefcase },
-  { href: "/admin/tareas", label: "Tareas", icon: ListChecks },
-  { href: "/admin/horas", label: "Horas", icon: Clock },
-  { href: "/admin/crm", label: "CRM", icon: Target },
-  { href: "/admin/presupuestos", label: "Presupuestos", icon: Receipt },
-  { href: "/admin/contabilidad", label: "Contabilidad", icon: Wallet },
+const navGroups = [
+  {
+    label: "Operación",
+    links: [
+      { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/admin/solicitudes", label: "Proyectos", icon: FileText },
+      { href: "/admin/tareas", label: "Tareas", icon: ListChecks },
+      { href: "/admin/horas", label: "Horas", icon: Clock },
+    ],
+  },
+  {
+    label: "Negocio",
+    links: [
+      { href: "/admin/crm", label: "CRM", icon: Target },
+      { href: "/admin/presupuestos", label: "Presupuestos", icon: Receipt },
+      { href: "/admin/contabilidad", label: "Contabilidad", icon: Wallet },
+      { href: "/admin/clientes", label: "Clientes", icon: Building2 },
+    ],
+  },
+  {
+    label: "Configuración",
+    links: [
+      { href: "/admin/servicios", label: "Servicios", icon: Briefcase },
+      { href: "/admin/usuarios", label: "Usuarios", icon: Users },
+      { href: "/admin/ajustes/empresa", label: "Ajustes empresa", icon: Settings, superOnly: true },
+    ],
+  },
 ];
 
-export function AdminMobileNav() {
-  const [open, setOpen] = useState(false);
+function isActivePath(pathname: string, href: string) {
+  return pathname === href || (href !== "/admin/dashboard" && pathname.startsWith(`${href}/`));
+}
+
+function AdminNavItems({
+  isSuperadmin = false,
+  onNavigate,
+}: {
+  isSuperadmin?: boolean;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
+
+  return (
+    <>
+      {navGroups.map((group) => {
+        const visibleLinks = group.links.filter((link) => !link.superOnly || isSuperadmin);
+        if (visibleLinks.length === 0) return null;
+
+        return (
+          <div key={group.label} className="space-y-1">
+            <p className="px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {group.label}
+            </p>
+            {visibleLinks.map(({ href, label, icon: Icon }) => {
+              const active = isActivePath(pathname, href);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={onNavigate}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors",
+                    active
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+export function AdminSidebarNav({ isSuperadmin }: { isSuperadmin: boolean }) {
+  return (
+    <nav className="flex flex-1 flex-col gap-2 p-3">
+      <AdminNavItems isSuperadmin={isSuperadmin} />
+    </nav>
+  );
+}
+
+export function AdminMobileNav({ isSuperadmin = false }: { isSuperadmin?: boolean }) {
+  const [open, setOpen] = useState(false);
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -45,22 +121,8 @@ export function AdminMobileNav() {
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-64 p-0 pt-10">
-        <nav className="flex flex-col gap-1 p-3">
-          {links.map(({ href, label, icon: Icon }) => (
-            <Button
-              key={href}
-              variant={pathname.startsWith(href) ? "secondary" : "ghost"}
-              size="sm"
-              className="justify-start"
-              asChild
-              onClick={() => setOpen(false)}
-            >
-              <Link href={href}>
-                <Icon className="h-4 w-4" />
-                {label}
-              </Link>
-            </Button>
-          ))}
+        <nav className="flex flex-col gap-2 p-3">
+          <AdminNavItems isSuperadmin={isSuperadmin} onNavigate={() => setOpen(false)} />
         </nav>
       </SheetContent>
     </Sheet>

@@ -4,8 +4,8 @@ import { redirect } from "next/navigation";
 import { requireClient } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
-import { FileText, LayoutDashboard, LogOut, PlusCircle, User } from "lucide-react";
-import { ClientMobileNav } from "@/components/client/MobileNav";
+import { LogOut, User } from "lucide-react";
+import { ClientDesktopNav, ClientMobileNav } from "@/components/client/MobileNav";
 
 async function signOut() {
   "use server";
@@ -34,26 +34,7 @@ export default async function ClientLayout({ children }: { children: React.React
                 priority
               />
             </Link>
-            <nav className="hidden items-center gap-1 md:flex">
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/dashboard">
-                  <LayoutDashboard className="h-4 w-4" />
-                  Inicio
-                </Link>
-              </Button>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/solicitudes">
-                  <FileText className="h-4 w-4" />
-                  Mis solicitudes
-                </Link>
-              </Button>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/solicitudes/nueva">
-                  <PlusCircle className="h-4 w-4" />
-                  Nueva solicitud
-                </Link>
-              </Button>
-            </nav>
+            <ClientDesktopNav />
           </div>
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" className="hidden md:inline-flex" asChild>

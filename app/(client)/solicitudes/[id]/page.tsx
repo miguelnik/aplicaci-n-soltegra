@@ -3,9 +3,21 @@ import Link from "next/link";
 import { requireClient } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { StatusBadge } from "@/components/client/StatusBadge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { ArrowLeft, AlertTriangle, XCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  AlertTriangle,
+  CalendarClock,
+  CheckCircle2,
+  Download,
+  FileText,
+  MessageSquare,
+  Send,
+  XCircle,
+} from "lucide-react";
 import { DeleteRequestButton } from "./DeleteRequestButton";
 import { getRequestMessages } from "@/lib/messages";
 import { getEffectiveModules, filterModulesForRole } from "@/lib/modules/defaults";
@@ -156,6 +168,59 @@ export default async function SolicitudDetallePage({ params }: Props) {
   const isDraft = req.status === "draft";
   const isCancelled = req.status === "cancelled";
   const isDeletable = ["draft", "submitted", "cancelled"].includes(req.status);
+  const isDelivered = req.status === "delivered";
+  const latestMessage = messages[messages.length - 1] ?? null;
+  const visibleDeliverables = expeditionDocuments.filter((doc) => doc.category === "deliverable").length;
+  const pendingDecisions = (rawDecisions ?? []).filter((d) => d.status === "pending").length;
+  const openIncidents = (rawIncidents ?? []).filter((i) => !["resolved", "closed"].includes(i.status)).length;
+  const dueDate = req.client_deadline ?? req.estimated_delivery_date ?? null;
+  const nextAction = isCancelled
+    ? {
+        title: "Solicitud cancelada",
+        description: "Si necesitas retomarla o resolver una duda, contacta con Soltegra.",
+        cta: null,
+        href: null,
+        icon: XCircle,
+        tone: "border-destructive/30 bg-destructive/5 text-destructive",
+      }
+    : isDraft
+      ? {
+          title: "Termina y envía esta solicitud",
+          description: "Aún no ha entrado en revisión. Puedes continuar completándola.",
+          cta: "Continuar solicitud",
+          href: "/solicitudes/nueva",
+          icon: Send,
+          tone: "border-slate-200 bg-white text-foreground",
+        }
+      : req.status === "awaiting_info"
+        ? {
+            title: "Soltegra necesita información para avanzar",
+            description: "Revisa la conversación y responde con los datos o archivos que falten.",
+            cta: "Ir a mensajes",
+            href: "#mensajes",
+            icon: AlertTriangle,
+            tone: "border-amber-200 bg-amber-50 text-amber-900",
+          }
+        : isDelivered && req.certificate_pdf_path
+          ? {
+              title: "Tu documentación está lista",
+              description: "Ya puedes descargar el certificado o entregables disponibles.",
+              cta: "Descargar",
+              href: `/solicitudes/${req.id}/descargar`,
+              icon: Download,
+              tone: "border-emerald-200 bg-emerald-50 text-emerald-900",
+            }
+          : {
+              title: "Proyecto en seguimiento",
+              description: latestMessage
+                ? `Último mensaje: ${latestMessage.authorRole === "admin" ? "Soltegra" : "Cliente"}`
+                : "Te avisaremos cuando haya novedades o necesitemos información.",
+              cta: latestMessage ? "Ver conversación" : null,
+              href: latestMessage ? "#mensajes" : null,
+              icon: CalendarClock,
+              tone: "border-blue-200 bg-blue-50 text-blue-900",
+            };
+  const NextActionIcon = nextAction.icon;
 
   // ── 8. Objeto de datos para los módulos ─────────────────────────────────
   const moduleData: ModulePageData = {
@@ -261,6 +326,78 @@ export default async function SolicitudDetallePage({ params }: Props) {
         </div>
       )}
 
+      <Card className={`border ${nextAction.tone}`}>
+        <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-white/70">
+              <NextActionIcon className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold">{nextAction.title}</p>
+              <p className="text-sm opacity-80">{nextAction.description}</p>
+            </div>
+          </div>
+          {nextAction.href && nextAction.cta && (
+            <Button asChild variant="outline" className="shrink-0 bg-white/70">
+              <Link href={nextAction.href}>{nextAction.cta}</Link>
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Card>
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10">
+              <FileText className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-lg font-bold">{expeditionDocuments.length + filesWithUrls.length}</p>
+              <p className="text-xs text-muted-foreground">Archivos y documentos</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-emerald-100">
+              <CheckCircle2 className="h-5 w-5 text-emerald-700" />
+            </div>
+            <div>
+              <p className="text-lg font-bold">{visibleDeliverables}</p>
+              <p className="text-xs text-muted-foreground">Entregables visibles</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-100">
+              <MessageSquare className="h-5 w-5 text-blue-700" />
+            </div>
+            <div>
+              <p className="text-lg font-bold">{messages.length}</p>
+              <p className="text-xs text-muted-foreground">Mensajes</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-amber-100">
+              <CalendarClock className="h-5 w-5 text-amber-700" />
+            </div>
+            <div>
+              <p className="text-lg font-bold">
+                {dueDate ? format(new Date(dueDate), "dd/MM/yy") : "Sin fecha"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {pendingDecisions + openIncidents > 0
+                  ? `${pendingDecisions} decisiones · ${openIncidents} incidencias`
+                  : "Seguimiento del proyecto"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* ── Banner de cancelación (sistema) ── */}
       {isCancelled && (
         <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/8 px-4 py-4">
@@ -297,12 +434,13 @@ export default async function SolicitudDetallePage({ params }: Props) {
       {/* ── Sección de módulos configurables ─────────────────────────────── */}
       {/* Cada módulo se renderiza en el orden configurado para este servicio */}
       {clientModules.map((m) => (
-        <ModuleSwitch
-          key={m.key}
-          module={m}
-          data={moduleData}
-          currentRole="client"
-        />
+        <div key={m.key} id={m.key === "messages" ? "mensajes" : undefined} className="scroll-mt-20">
+          <ModuleSwitch
+            module={m}
+            data={moduleData}
+            currentRole="client"
+          />
+        </div>
       ))}
 
       {/* ── Botón de eliminación al pie (sistema, solo para enviadas activas) ── */}
