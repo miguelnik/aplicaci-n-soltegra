@@ -79,11 +79,11 @@ export default async function AdminSolicitudesPage({ searchParams }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">Solicitudes</h1>
+        <h1 className="text-2xl font-bold">Proyectos</h1>
         <Button asChild>
           <Link href="/admin/solicitudes/nueva">
             <Plus className="h-4 w-4" />
-            Nueva solicitud
+            Nuevo proyecto
           </Link>
         </Button>
       </div>

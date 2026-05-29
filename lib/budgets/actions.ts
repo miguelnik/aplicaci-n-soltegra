@@ -522,6 +522,10 @@ export async function convertBudgetToProject(
     const phases = (svc?.status_phases as Array<{ key: string }> | null) ?? [];
     const now = new Date().toISOString();
 
+    let referenceCode: string | null = null;
+    const { data: refData } = await admin.rpc("next_reference_code");
+    if (typeof refData === "string") referenceCode = refData;
+
     const { data: created, error: createErr } = await admin
       .from("certificate_requests")
       .insert({
@@ -531,6 +535,7 @@ export async function convertBudgetToProject(
         form_data: {},
         status: "submitted",
         status_history: [{ status: "submitted", at: now }],
+        reference_code: referenceCode,
         property_address: propertyAddress.trim(),
         price: total,
         is_hidden_from_client: false,

@@ -53,7 +53,7 @@ export function NewAdminRequestClient({ organizations, services }: Props) {
       });
 
       if (!res.ok) { toast.error(res.error ?? "Error"); return; }
-      toast.success("Solicitud creada");
+      toast.success("Proyecto creado");
       router.push(`/admin/solicitudes/${res.id}`);
     });
   }
@@ -185,7 +185,7 @@ export function NewAdminRequestClient({ organizations, services }: Props) {
 
         <div className="flex gap-2 pt-2">
           <Button onClick={submit} disabled={pending || !orgId || !serviceId || !propertyAddress.trim()}>
-            {pending ? "Creando..." : "Crear solicitud"}
+            {pending ? "Creando..." : "Crear proyecto"}
           </Button>
           <Button variant="ghost" onClick={() => router.back()} disabled={pending}>
             Cancelar

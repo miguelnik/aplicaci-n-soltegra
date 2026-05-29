@@ -32,6 +32,8 @@ import { DeleteAdminRequestButton } from "./DeleteAdminRequestButton";
 import { ErpPanel } from "./ErpPanel";
 import { ProjectFinancePanel } from "./ProjectFinancePanel";
 import { HoursPanel } from "./HoursPanel";
+import { EditableProjectName } from "./EditableProjectName";
+import { ProjectTasksPanel } from "./ProjectTasksPanel";
 import type { FinanceEntry } from "@/lib/finance/types";
 import type { TimeEntryWithWorker } from "@/lib/hours/types";
 
@@ -230,6 +232,27 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
     indirectLaborCost = totalOverheadCost / activeCount;
   }
 
+  // Tareas vinculadas al proyecto
+  const { data: projectTaskRows } = await admin
+    .from("user_tasks")
+    .select("*, assignee:assignee_id(full_name), creator:created_by(full_name)")
+    .eq("request_id", id)
+    .order("status", { ascending: true })
+    .order("due_at", { ascending: true, nullsFirst: false });
+  const projectTasks = (projectTaskRows ?? []).map((t) => ({
+    id: t.id,
+    title: t.title,
+    description: t.description,
+    due_at: t.due_at,
+    priority: t.priority,
+    status: t.status,
+    assignee_id: t.assignee_id,
+    contact_id: t.contact_id,
+    request_id: t.request_id,
+    assignee_name: (t.assignee as { full_name?: string | null } | null)?.full_name ?? null,
+    creator_name: (t.creator as { full_name?: string | null } | null)?.full_name ?? null,
+  }));
+
   // Lista de workers (admin/superadmin) para el formulario de horas
   // (sólo necesaria si el actual es superadmin, pero la cargamos siempre por simplicidad)
   const workersList = (workers ?? []).map((w) => ({
@@ -244,13 +267,13 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
       <div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Link href="/admin/solicitudes" className="hover:text-primary">
-            Solicitudes
+            Proyectos
           </Link>
           <span>/</span>
           <span className="font-mono">{req.reference_code ?? id.slice(0, 8)}</span>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-2xl font-bold">{req.property_address ?? "Sin dirección"}</h1>
+          <EditableProjectName requestId={req.id} initialName={req.property_address ?? ""} />
           <StatusBadge status={req.status} />
         </div>
         <p className="text-sm text-muted-foreground">
@@ -273,7 +296,7 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
         <span
           className="rounded-t-md border border-b-0 border-border bg-background px-4 py-2 text-sm font-medium"
         >
-          Solicitud
+          Proyecto
         </span>
         <Link
           href={`/admin/solicitudes/${id}/expediente`}
@@ -516,6 +539,14 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      {/* ── Tareas del proyecto (ancho completo) ── */}
+      <ProjectTasksPanel
+        requestId={req.id}
+        currentUserId={me.id}
+        workers={workersList}
+        tasks={projectTasks}
+      />
 
       {/* ── Horas imputadas (ancho completo) ── */}
       <HoursPanel

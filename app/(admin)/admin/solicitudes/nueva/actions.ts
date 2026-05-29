@@ -57,6 +57,11 @@ export async function createAdminRequest(
     const phases = (svc?.status_phases as Array<{ key: string }> | null) ?? [];
     const initialPhaseKey = phases.length > 0 ? phases[0].key : null;
 
+    // Generar número de referencia (mismo formato SOL-AAAA-NNNN que las del cliente)
+    let referenceCode: string | null = null;
+    const { data: refData } = await admin.rpc("next_reference_code");
+    if (typeof refData === "string") referenceCode = refData;
+
     // Crear la solicitud
     const now = new Date().toISOString();
     const { data: created, error: insertErr } = await admin
@@ -68,6 +73,7 @@ export async function createAdminRequest(
         form_data: {},
         status: "submitted",
         status_history: [{ status: "submitted", at: now }],
+        reference_code: referenceCode,
         property_address: input.propertyAddress.trim(),
         client_notes: input.clientNotes?.trim() || null,
         client_deadline: input.clientDeadline || null,

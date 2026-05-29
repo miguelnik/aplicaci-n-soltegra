@@ -77,7 +77,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Button variant="ghost" size="sm" className="justify-start" asChild>
             <Link href="/admin/solicitudes">
               <FileText className="h-4 w-4" />
-              Solicitudes
+              Proyectos
             </Link>
           </Button>
           <Button variant="ghost" size="sm" className="justify-start" asChild>

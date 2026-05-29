@@ -25,9 +25,9 @@ export default async function NewAdminRequestPage() {
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Volver a Solicitudes
+          Volver a Proyectos
         </Link>
-        <h1 className="mt-1 text-2xl font-bold">Nueva solicitud</h1>
+        <h1 className="mt-1 text-2xl font-bold">Nuevo proyecto</h1>
         <p className="text-sm text-muted-foreground">
           Crea un proyecto en nombre de un cliente. Podrás decidir si lo verá o no, y rellenar el resto de datos después en la vista del proyecto.
         </p>

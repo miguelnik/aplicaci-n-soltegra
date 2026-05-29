@@ -334,6 +334,10 @@ export async function convertOpportunityToProject(
       .single();
     const phases = (svc?.status_phases as Array<{ key: string }> | null) ?? [];
 
+    let referenceCode: string | null = null;
+    const { data: refData } = await admin.rpc("next_reference_code");
+    if (typeof refData === "string") referenceCode = refData;
+
     const now = new Date().toISOString();
     const { data: created, error: createErr } = await admin
       .from("certificate_requests")
@@ -344,6 +348,7 @@ export async function convertOpportunityToProject(
         form_data: {},
         status: "submitted",
         status_history: [{ status: "submitted", at: now }],
+        reference_code: referenceCode,
         property_address: propertyAddress.trim(),
         price: opp.estimated_value,
         is_hidden_from_client: false,

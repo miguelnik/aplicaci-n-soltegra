@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -79,7 +80,7 @@ export async function updateStatus(
  */
 export async function updateRequestErp(
   requestId: string,
-  patch: { price?: number | null; is_hidden_from_client?: boolean },
+  patch: { price?: number | null; is_hidden_from_client?: boolean; property_address?: string },
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     await requireAdmin();
@@ -88,6 +89,11 @@ export async function updateRequestErp(
     const payload: Record<string, unknown> = {};
     if ("price" in patch) payload.price = patch.price;
     if ("is_hidden_from_client" in patch) payload.is_hidden_from_client = patch.is_hidden_from_client;
+    if ("property_address" in patch) {
+      const name = patch.property_address?.trim();
+      if (!name) return { ok: false, error: "El nombre del proyecto no puede estar vacío" };
+      payload.property_address = name;
+    }
 
     if (Object.keys(payload).length === 0) {
       return { ok: false, error: "Sin campos a actualizar" };
@@ -99,6 +105,9 @@ export async function updateRequestErp(
       .eq("id", requestId);
 
     if (error) return { ok: false, error: error.message };
+
+    revalidatePath(`/admin/solicitudes/${requestId}`);
+    revalidatePath(`/admin/solicitudes/${requestId}/expediente`);
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };

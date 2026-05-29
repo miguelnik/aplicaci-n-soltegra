@@ -153,9 +153,9 @@ export default async function AdminDashboardPage() {
         </Link>
       )}
 
-      {/* Solicitudes recientes */}
+      {/* Proyectos recientes */}
       <div>
-        <h2 className="mb-3 text-lg font-semibold">Solicitudes recientes</h2>
+        <h2 className="mb-3 text-lg font-semibold">Proyectos recientes</h2>
         {recent && recent.length > 0 ? (
           <div className="overflow-x-auto rounded-lg border">
             <table className="w-full min-w-[600px] text-sm">

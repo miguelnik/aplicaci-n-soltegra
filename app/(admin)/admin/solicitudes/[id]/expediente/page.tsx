@@ -218,7 +218,7 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
       <div>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Link href="/admin/solicitudes" className="hover:text-primary">
-            Solicitudes
+            Proyectos
           </Link>
           <span>/</span>
           <span className="font-mono">{req.reference_code ?? requestId.slice(0, 8)}</span>
@@ -234,7 +234,7 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
           href={`/admin/solicitudes/${requestId}`}
           className="rounded-t-md px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
-          Solicitud
+          Proyecto
         </Link>
         <span className="rounded-t-md border border-b-0 border-border bg-background px-4 py-2 text-sm font-medium">
           Expediente

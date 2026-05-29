@@ -21,7 +21,7 @@ import { useState } from "react";
 
 const links = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/solicitudes", label: "Solicitudes", icon: FileText },
+  { href: "/admin/solicitudes", label: "Proyectos", icon: FileText },
   { href: "/admin/clientes", label: "Clientes", icon: Building2 },
   { href: "/admin/usuarios", label: "Usuarios", icon: Users },
   { href: "/admin/servicios", label: "Servicios", icon: Briefcase },
