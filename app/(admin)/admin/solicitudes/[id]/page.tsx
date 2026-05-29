@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { requireAdmin } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/client/StatusBadge";
@@ -103,13 +103,97 @@ function DownloadFileRow({
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ tab?: string }>;
 }
 
-export default async function AdminSolicitudDetallePage({ params }: Props) {
+const PROJECT_TABS = [
+  { key: "resumen", label: "Resumen" },
+  { key: "cliente", label: "Cliente y datos" },
+  { key: "documentos", label: "Documentos" },
+  { key: "conversacion", label: "Conversación" },
+  { key: "tareas", label: "Tareas" },
+  { key: "horas", label: "Horas" },
+  { key: "finanzas", label: "Finanzas" },
+  { key: "ajustes", label: "Ajustes" },
+] as const;
+
+type ProjectTab = (typeof PROJECT_TABS)[number]["key"];
+
+function isProjectTab(value: string | undefined): value is ProjectTab {
+  return PROJECT_TABS.some((tab) => tab.key === value);
+}
+
+function formatMoney(value: number | null | undefined): string {
+  if (value == null) return "—";
+  return new Intl.NumberFormat("es-ES", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  }).format(Number(value));
+}
+
+function ProjectTabs({
+  requestId,
+  activeTab,
+}: {
+  requestId: string;
+  activeTab: ProjectTab;
+}) {
+  return (
+    <div className="overflow-x-auto border-b">
+      <nav className="flex min-w-max gap-1" aria-label="Secciones del proyecto">
+        {PROJECT_TABS.map((tab) => {
+          const active = activeTab === tab.key;
+          return (
+            <Link
+              key={tab.key}
+              href={`/admin/solicitudes/${requestId}?tab=${tab.key}`}
+              className={[
+                "rounded-t-md border border-transparent px-3 py-2 text-sm font-medium transition-colors",
+                active
+                  ? "border-border border-b-background bg-background text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              ].join(" ")}
+            >
+              {tab.label}
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}
+
+function ProjectSummaryTile({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: ReactNode;
+  detail?: string;
+}) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="text-base font-semibold">{value}</div>
+        {detail && <p className="mt-1 text-xs text-muted-foreground">{detail}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+export default async function AdminSolicitudDetallePage({ params, searchParams }: Props) {
   const me = await requireAdmin();
   const isSuper = me.role === "superadmin";
   const { id } = await params;
-  const supabase = await createSupabaseServerClient();
+  const rawSearchParams = (await searchParams) ?? {};
+  const activeTab: ProjectTab = isProjectTab(rawSearchParams.tab)
+    ? rawSearchParams.tab
+    : "resumen";
   const admin = createSupabaseAdminClient();
 
   // Usar admin client (service_role) para bypasear RLS en páginas de admin.
@@ -260,6 +344,17 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
     full_name: w.full_name,
     hourly_cost: null,
   }));
+  const assignedWorkerName =
+    workersList.find((worker) => worker.id === req.assigned_to)?.full_name ?? "Sin asignar";
+  const currentPhaseLabel =
+    statusPhases.find((phase) => phase.key === req.current_phase_key)?.label ?? "Sin fase";
+  const clientName = (req.organizations as unknown as { name: string } | null)?.name ?? "Cliente sin nombre";
+  const serviceName = (req.service_types as unknown as { name: string } | null)?.name ?? null;
+  const openProjectTasks = projectTasks.filter((task) => task.status !== "done");
+  const recentProjectTasks = projectTasks.slice(0, 5);
+  const recentMessages = messages.slice(-3).reverse();
+  const visibleExpeditionDocs = expeditionDocs.filter((doc) => doc.is_visible_to_client).length;
+  const deadline = req.client_deadline ?? req.estimated_delivery_date ?? null;
 
   return (
     <div className="space-y-6">
@@ -326,11 +421,111 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* ── Columna izquierda: datos + archivos + docs expediente ── */}
-        <div className="space-y-6 lg:col-span-2">
-          {/* Formulario inicial */}
-          {schema && (
+      <ProjectTabs requestId={id} activeTab={activeTab} />
+
+      {activeTab === "resumen" && (
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <ProjectSummaryTile label="Estado" value={<StatusBadge status={req.status} />} />
+            <ProjectSummaryTile label="Fase" value={currentPhaseLabel} />
+            <ProjectSummaryTile label="Asignado" value={assignedWorkerName} />
+            <ProjectSummaryTile
+              label="Precio y pago"
+              value={formatMoney((req.price as number | null) ?? null)}
+              detail={req.is_paid ? "Pagado" : "Pendiente de pago"}
+            />
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <ProjectSummaryTile
+              label="Fecha límite"
+              value={deadline ? format(new Date(deadline), "dd/MM/yyyy") : "Sin fecha"}
+              detail={req.client_deadline ? "Compromiso indicado por el cliente" : undefined}
+            />
+            <ProjectSummaryTile label="Tareas abiertas" value={openProjectTasks.length} detail={`${projectTasks.length} tareas totales`} />
+            <ProjectSummaryTile label="Comunicaciones" value={messages.length} detail="Mensajes con el cliente" />
+            <ProjectSummaryTile
+              label="Documentos"
+              value={expeditionDocs.length}
+              detail={`${visibleExpeditionDocs} visibles para cliente · ${files?.length ?? 0} iniciales`}
+            />
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Últimas tareas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {recentProjectTasks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No hay tareas vinculadas a este proyecto.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {recentProjectTasks.map((task) => (
+                      <li key={task.id} className="rounded-md border px-3 py-2 text-sm">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-medium">{task.title}</span>
+                          <Badge variant={task.status === "done" ? "secondary" : "outline"}>{task.status}</Badge>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {task.assignee_name ?? "Sin asignar"}
+                          {task.due_at ? ` · ${format(new Date(task.due_at), "dd/MM/yyyy")}` : ""}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <Link href={`/admin/solicitudes/${id}?tab=tareas`} className="mt-3 inline-flex items-center gap-1 text-sm text-primary hover:underline">
+                  Gestionar tareas
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Últimas comunicaciones</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {recentMessages.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Aún no hay mensajes con el cliente.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {recentMessages.map((message) => (
+                      <li key={message.id} className="rounded-md border px-3 py-2 text-sm">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-medium">
+                            {message.authorRole === "admin" ? "Soltegra" : message.authorName ?? "Cliente"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(message.createdAt), "dd/MM/yyyy HH:mm")}
+                          </span>
+                        </div>
+                        <p className="mt-1 line-clamp-2 text-muted-foreground">{message.body}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <Link href={`/admin/solicitudes/${id}?tab=conversacion`} className="mt-3 inline-flex items-center gap-1 text-sm text-primary hover:underline">
+                  Abrir conversación
+                </Link>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {activeTab === "cliente" && (
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <ProjectSummaryTile label="Cliente" value={clientName} />
+            <ProjectSummaryTile
+              label="Email"
+              value={(req.organizations as unknown as { contact_email: string | null } | null)?.contact_email ?? "—"}
+            />
+            <ProjectSummaryTile label="Servicio" value={serviceName ?? "—"} />
+          </div>
+
+          {schema ? (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Datos enviados por el cliente</CardTitle>
@@ -345,42 +540,49 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
                 />
               </CardContent>
             </Card>
+          ) : (
+            <Card>
+              <CardContent className="py-6">
+                <p className="text-sm text-muted-foreground">Este proyecto no tiene formulario inicial asociado.</p>
+              </CardContent>
+            </Card>
           )}
 
-          {/* Archivos del formulario inicial (request_files) */}
-          {files && files.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <FileText className="h-4 w-4" />
-                  Archivos del formulario ({files.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FileText className="h-4 w-4" />
+                Archivos del formulario ({files?.length ?? 0})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {files && files.length > 0 ? (
                 <ul className="space-y-2">
                   {files.map((f) => (
                     <DownloadFileRow key={f.id} file={f} requestId={id} />
                   ))}
                 </ul>
-              </CardContent>
-            </Card>
-          )}
+              ) : (
+                <p className="text-sm text-muted-foreground">No hay archivos iniciales del cliente.</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-          {/* Documentos del expediente (expedition_documents) */}
+      {activeTab === "documentos" && (
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <FolderOpen className="h-4 w-4" />
                 Documentos del expediente
                 {expeditionDocs.length > 0 && (
-                  <span className="ml-1 font-normal text-muted-foreground">
-                    ({expeditionDocs.length})
-                  </span>
+                  <span className="ml-1 font-normal text-muted-foreground">({expeditionDocs.length})</span>
                 )}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Lista de docs existentes */}
+            <CardContent>
               {expeditionDocs.length > 0 ? (
                 <ul className="space-y-2">
                   {expeditionDocs.map((doc) => {
@@ -388,17 +590,9 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
                       label: doc.category,
                       variant: "outline" as const,
                     };
-                    const deleteBound = deleteExpeditionDoc.bind(
-                      null,
-                      doc.id,
-                      doc.storage_path,
-                      id,
-                    );
+                    const deleteBound = deleteExpeditionDoc.bind(null, doc.id, doc.storage_path, id);
                     return (
-                      <li
-                        key={doc.id}
-                        className="flex items-center gap-2 rounded-md border bg-muted/20 px-3 py-2 text-sm"
-                      >
+                      <li key={doc.id} className="flex items-center gap-2 rounded-md border bg-muted/20 px-3 py-2 text-sm">
                         <div className="flex min-w-0 flex-1 items-center gap-2">
                           <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
                           <div className="min-w-0">
@@ -417,8 +611,7 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
                             </div>
                             <p className="text-xs text-muted-foreground">
                               {doc.original_filename}
-                              {doc.size_bytes != null &&
-                                ` · ${(doc.size_bytes / 1024).toFixed(0)} KB`}
+                              {doc.size_bytes != null && ` · ${(doc.size_bytes / 1024).toFixed(0)} KB`}
                             </p>
                           </div>
                           <Badge variant={catInfo.variant} className="shrink-0 text-[10px]">
@@ -428,12 +621,7 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
                         <div className="flex shrink-0 items-center gap-1">
                           {doc.signedUrl && (
                             <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
-                              <a
-                                href={doc.signedUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                title="Descargar"
-                              >
+                              <a href={doc.signedUrl} target="_blank" rel="noopener noreferrer" title="Descargar">
                                 <Download className="h-3.5 w-3.5" />
                               </a>
                             </Button>
@@ -455,27 +643,74 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
                   })}
                 </ul>
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  Sin documentos de expediente todavía.
-                </p>
+                <p className="text-sm text-muted-foreground">Sin documentos de expediente todavía.</p>
               )}
-
-              {/* Uploader */}
-              <div className="border-t pt-3">
-                <p className="mb-2 text-xs font-medium text-muted-foreground">
-                  Subir nuevo documento
-                </p>
-                <ExpeditionDocUploader
-                  requestId={req.id}
-                  organizationId={req.organization_id}
-                />
-              </div>
             </CardContent>
           </Card>
-        </div>
 
-        {/* ── Columna derecha: acciones admin ── */}
-        <div className="space-y-4">
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Subir nuevo documento</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ExpeditionDocUploader requestId={req.id} organizationId={req.organization_id} />
+              </CardContent>
+            </Card>
+            <PdfUploader
+              requestId={req.id}
+              organizationId={req.organization_id}
+              currentPdfPath={req.certificate_pdf_path}
+            />
+          </div>
+        </div>
+      )}
+
+      {activeTab === "conversacion" && (
+        <MessageThread
+          requestId={req.id}
+          messages={messages}
+          currentRole="admin"
+          title="Conversación con el cliente"
+          placeholder="Escribe un mensaje para el cliente..."
+        />
+      )}
+
+      {activeTab === "tareas" && (
+        <ProjectTasksPanel
+          requestId={req.id}
+          currentUserId={me.id}
+          workers={workersList}
+          tasks={projectTasks}
+        />
+      )}
+
+      {activeTab === "horas" && (
+        <HoursPanel
+          requestId={req.id}
+          entries={timeEntries}
+          currentUserId={me.id}
+          currentRole={isSuper ? "superadmin" : "admin"}
+          workers={workersList}
+        />
+      )}
+
+      {activeTab === "finanzas" && (
+        <ProjectFinancePanel
+          requestId={req.id}
+          organizationId={req.organization_id}
+          serviceSlug={serviceSlug}
+          price={(req.price as number | null) ?? null}
+          isPaid={req.is_paid ?? false}
+          entries={financeEntries}
+          directLaborCost={directLaborCost}
+          indirectLaborCost={indirectLaborCost}
+          showProfitability={isSuper}
+        />
+      )}
+
+      {activeTab === "ajustes" && (
+        <div className="grid gap-6 xl:grid-cols-2">
           <AssignWorker
             requestId={req.id}
             currentAssignedTo={req.assigned_to ?? null}
@@ -501,24 +736,8 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
             />
           )}
           {req.status !== "draft" && req.status !== "cancelled" && (
-            <PaymentToggle
-              requestId={req.id}
-              isPaid={req.is_paid}
-              paidAt={req.paid_at}
-            />
+            <PaymentToggle requestId={req.id} isPaid={req.is_paid} paidAt={req.paid_at} />
           )}
-          <MessageThread
-            requestId={req.id}
-            messages={messages}
-            currentRole="admin"
-            title="Conversación con el cliente"
-            placeholder="Escribe un mensaje para el cliente..."
-          />
-          <PdfUploader
-            requestId={req.id}
-            organizationId={req.organization_id}
-            currentPdfPath={req.certificate_pdf_path}
-          />
           {req.internal_notes && (
             <Card>
               <CardHeader className="pb-2">
@@ -529,46 +748,16 @@ export default async function AdminSolicitudDetallePage({ params }: Props) {
               </CardContent>
             </Card>
           )}
-
-          {/* Zona de peligro */}
-          <div className="border-t pt-2">
-            <DeleteAdminRequestButton
-              requestId={req.id}
-              referenceCode={req.reference_code ?? null}
-            />
-          </div>
+          <Card className="border-destructive/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-destructive">Zona de peligro</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DeleteAdminRequestButton requestId={req.id} referenceCode={req.reference_code ?? null} />
+            </CardContent>
+          </Card>
         </div>
-      </div>
-
-      {/* ── Tareas del proyecto (ancho completo) ── */}
-      <ProjectTasksPanel
-        requestId={req.id}
-        currentUserId={me.id}
-        workers={workersList}
-        tasks={projectTasks}
-      />
-
-      {/* ── Horas imputadas (ancho completo) ── */}
-      <HoursPanel
-        requestId={req.id}
-        entries={timeEntries}
-        currentUserId={me.id}
-        currentRole={isSuper ? "superadmin" : "admin"}
-        workers={workersList}
-      />
-
-      {/* ── Contabilidad del proyecto (ancho completo) ── */}
-      <ProjectFinancePanel
-        requestId={req.id}
-        organizationId={req.organization_id}
-        serviceSlug={serviceSlug}
-        price={(req.price as number | null) ?? null}
-        isPaid={req.is_paid ?? false}
-        entries={financeEntries}
-        directLaborCost={directLaborCost}
-        indirectLaborCost={indirectLaborCost}
-        showProfitability={isSuper}
-      />
+      )}
     </div>
   );
 }
