@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertCircle, LockKeyhole } from "lucide-react";
 
 export default function SetPasswordPage() {
   const router = useRouter();
@@ -47,41 +48,53 @@ export default function SetPasswordPage() {
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="border-border/80 shadow-lg">
+      <CardHeader className="text-center">
+        <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-md bg-primary/10">
+          <LockKeyhole className="h-6 w-6 text-primary" />
+        </div>
         <CardTitle>Establece tu contraseña</CardTitle>
-        <CardDescription>Crea una contraseña segura para tu cuenta.</CardDescription>
+        <CardDescription>Crea una contraseña segura de al menos 8 caracteres.</CardDescription>
       </CardHeader>
       <CardContent>
         {error && (
-          <div className="mb-4 rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {error}
+          <div className="mb-4 flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{error}</span>
           </div>
         )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="password">Nueva contraseña</Label>
-            <Input
-              id="password"
-              name="password"
-              type="password"
-              required
-              minLength={8}
-              placeholder="Mínimo 8 caracteres"
-              autoComplete="new-password"
-            />
+            <div className="relative">
+              <LockKeyhole className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                required
+                minLength={8}
+                placeholder="Mínimo 8 caracteres"
+                autoComplete="new-password"
+                className="pl-9"
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirm">Confirmar contraseña</Label>
-            <Input
-              id="confirm"
-              name="confirm"
-              type="password"
-              required
-              minLength={8}
-              placeholder="Repite la contraseña"
-              autoComplete="new-password"
-            />
+            <div className="relative">
+              <LockKeyhole className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="confirm"
+                name="confirm"
+                type="password"
+                required
+                minLength={8}
+                placeholder="Repite la contraseña"
+                autoComplete="new-password"
+                className="pl-9"
+              />
+            </div>
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Guardando..." : "Guardar contraseña"}

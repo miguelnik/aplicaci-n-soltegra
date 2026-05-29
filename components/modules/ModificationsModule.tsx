@@ -8,7 +8,7 @@
 import { useState, useRef } from "react";
 import {
   CheckCircle2, XCircle, Clock, Plus, Send, Euro,
-  User, Lock, ChevronDown, ChevronUp, Paperclip, X, FileText, Image as ImageIcon,
+  Lock, ChevronDown, ChevronUp, Paperclip, X, FileText, Image as ImageIcon,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
@@ -166,7 +166,7 @@ function ModificationCard({
   requestId: string;
 }) {
   const [open, setOpen] = useState(mod.status === "pending");
-  const [responding, setResponding] = useState(false);
+  const responding = false;
   const [newMessage, setNewMessage] = useState("");
   const [sendingMsg, setSendingMsg] = useState(false);
   const [respondingAction, setRespondingAction] = useState(false);

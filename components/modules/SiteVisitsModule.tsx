@@ -5,7 +5,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { HardHat, Calendar, Camera, X, ImagePlus } from "lucide-react";
+import { HardHat, Calendar, ImagePlus } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";

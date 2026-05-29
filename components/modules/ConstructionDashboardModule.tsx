@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   HardHat,
-  Euro,
   TrendingUp,
   TrendingDown,
 } from "lucide-react";

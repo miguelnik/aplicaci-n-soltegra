@@ -16,7 +16,6 @@ import { getServiceById } from "@/lib/services";
 import { MODULE_CATALOG, GROUP_LABELS, type ModuleMeta } from "@/lib/modules/catalog";
 import { getEffectiveModules } from "@/lib/modules/defaults";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +23,6 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import {
   ArrowLeft,
   Eye,
-  EyeOff,
   RotateCcw,
   CheckCircle2,
   Lock,

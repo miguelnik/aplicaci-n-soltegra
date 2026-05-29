@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
@@ -136,7 +135,6 @@ export default async function ExpedientePage({ params, searchParams }: Props) {
   const activeTab: TabKey =
     TABS.find((t) => t.key === rawTab)?.key ?? "milestones";
 
-  const supabase = await createSupabaseServerClient();
   const admin = createSupabaseAdminClient();
 
   // Solicitud base — usar admin client para bypasear RLS

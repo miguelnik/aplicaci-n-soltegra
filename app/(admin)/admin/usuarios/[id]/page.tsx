@@ -6,8 +6,19 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, ShieldAlert } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Building2,
+  CheckCircle2,
+  KeyRound,
+  Mail,
+  Phone,
+  ShieldAlert,
+  Trash2,
+  UserCog,
+} from "lucide-react";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -43,6 +54,7 @@ export default async function EditarUsuarioPage({ params, searchParams }: Props)
   }
 
   const email = authData?.user?.email ?? "—";
+  const organizationName = orgs?.find((org) => org.id === profile.organization_id)?.name ?? null;
 
   async function handleUpdate(formData: FormData) {
     "use server";
@@ -134,158 +146,211 @@ export default async function EditarUsuarioPage({ params, searchParams }: Props)
   }
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/admin/usuarios">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold">Editar usuario</h1>
-          <p className="text-sm text-muted-foreground">{email}</p>
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div className="rounded-lg border bg-background p-5 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="flex gap-3">
+            <Button variant="ghost" size="icon" asChild>
+              <Link href="/admin/usuarios" aria-label="Volver a usuarios">
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
+            </Button>
+            <div className="min-w-0 space-y-1">
+              <p className="text-sm font-medium text-primary">Gestión de acceso</p>
+              <h1 className="truncate text-2xl font-bold tracking-tight">
+                {profile.full_name ?? "Editar usuario"}
+              </h1>
+              <p className="truncate text-sm text-muted-foreground">{email}</p>
+            </div>
+          </div>
+          <Button variant="outline" asChild>
+            <Link href="/admin/usuarios">
+              Volver al listado
+            </Link>
+          </Button>
         </div>
       </div>
 
       {/* Aviso si el usuario es superadmin */}
       {profile.role === "superadmin" && (
-        <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          <ShieldAlert className="h-4 w-4 shrink-0" />
-          Este usuario es <strong>Superadministrador</strong>. Edita con precaución.
+        <div className="flex gap-3 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            Este usuario es <strong>Superadministrador</strong>. Edita con precaución.
+          </p>
         </div>
       )}
 
       {error && (
-        <div className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
+        <div className="flex gap-3 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>{error}</p>
         </div>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Datos del usuario</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form action={handleUpdate} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Email (no editable)</Label>
-              <Input value={email} disabled className="bg-muted/50" readOnly />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="full_name">Nombre completo</Label>
-              <Input
-                id="full_name"
-                name="full_name"
-                defaultValue={profile.full_name ?? ""}
-                placeholder="María García López"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Teléfono</Label>
-              <Input
-                id="phone"
-                name="phone"
-                defaultValue={profile.phone ?? ""}
-                placeholder="+34 600 000 000"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="organization_id">Organización</Label>
-              <select
-                id="organization_id"
-                name="organization_id"
-                defaultValue={profile.organization_id ?? ""}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="">— Ninguna (Admin Soltegra) —</option>
-                {orgs?.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Rol</Label>
-              <select
-                id="role"
-                name="role"
-                defaultValue={profile.role}
-                disabled={!isSuperAdmin}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-              >
-                <option value="client">Cliente</option>
-                <option value="admin">Admin Soltegra</option>
-                {isSuperAdmin && (
-                  <option value="superadmin">Superadministrador</option>
-                )}
-              </select>
-              {!isSuperAdmin && (
-                <p className="text-xs text-muted-foreground">
-                  Solo un superadmin puede cambiar el rol.
-                </p>
-              )}
-            </div>
-            <div className="flex gap-3 pt-2">
-              <Button type="submit" className="flex-1">
-                Guardar cambios
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/admin/usuarios">Cancelar</Link>
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Establecer contraseña</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {pwok && (
-            <div className="mb-4 rounded-md bg-green-50 px-4 py-3 text-sm text-green-700 border border-green-200">
-              Contraseña actualizada correctamente.
-            </div>
-          )}
-          <form action={handleSetPassword} className="flex gap-2">
-            <Input
-              name="password"
-              type="text"
-              placeholder="Nueva contraseña (mín. 8 caracteres)"
-              minLength={8}
-              required
-              className="flex-1"
-            />
-            <Button type="submit" variant="secondary">
-              Guardar
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card className="border-destructive/40">
-        <CardHeader>
-          <CardTitle className="text-base text-destructive">Zona peligrosa</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="mb-4 text-sm text-muted-foreground">
-            Eliminar este usuario borra su cuenta y acceso permanentemente. Sus solicitudes
-            quedan registradas en el sistema.
-          </p>
-          {(profile.role === "admin" || profile.role === "superadmin") && !isSuperAdmin ? (
-            <p className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
-              Solo un superadministrador puede eliminar administradores.
-            </p>
-          ) : (
-            <form action={handleDelete}>
-              <Button type="submit" variant="destructive" className="w-full">
-                Eliminar usuario
-              </Button>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <UserCog className="h-4 w-4 text-primary" />
+              Datos del usuario
+            </CardTitle>
+            <CardDescription>
+              Actualiza su rol, organización y datos de contacto sin modificar el email de acceso.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action={handleUpdate} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Email (no editable)</Label>
+                <Input value={email} disabled className="bg-muted/50" readOnly />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="full_name">Nombre completo</Label>
+                  <Input
+                    id="full_name"
+                    name="full_name"
+                    defaultValue={profile.full_name ?? ""}
+                    placeholder="María García López"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Teléfono</Label>
+                  <Input
+                    id="phone"
+                    name="phone"
+                    defaultValue={profile.phone ?? ""}
+                    placeholder="+34 600 000 000"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="organization_id">Organización</Label>
+                  <select
+                    id="organization_id"
+                    name="organization_id"
+                    defaultValue={profile.organization_id ?? ""}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="">— Ninguna (Admin Soltegra) —</option>
+                    {orgs?.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Rol</Label>
+                  <select
+                    id="role"
+                    name="role"
+                    defaultValue={profile.role}
+                    disabled={!isSuperAdmin}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                  >
+                    <option value="client">Cliente</option>
+                    <option value="admin">Admin Soltegra</option>
+                    {isSuperAdmin && (
+                      <option value="superadmin">Superadministrador</option>
+                    )}
+                  </select>
+                  {!isSuperAdmin && (
+                    <p className="text-xs text-muted-foreground">
+                      Solo un superadmin puede cambiar el rol.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
+                <Button variant="outline" className="sm:w-40" asChild>
+                  <Link href="/admin/usuarios">Cancelar</Link>
+                </Button>
+                <Button type="submit" className="flex-1">
+                  Guardar cambios
+                </Button>
+              </div>
             </form>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-4">
+          <div className="rounded-lg border bg-background p-4 shadow-sm">
+            <p className="mb-3 text-sm font-medium">Resumen</p>
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-primary" />
+                <span className="min-w-0 truncate">{email}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Phone className="h-4 w-4 text-primary" />
+                <span>{profile.phone || "Sin teléfono"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-primary" />
+                <span>{organizationName ?? (profile.role === "client" ? "Sin organización" : "Admin Soltegra")}</span>
+              </div>
+            </div>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <KeyRound className="h-4 w-4 text-primary" />
+                Contraseña
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {pwok && (
+                <div className="mb-4 flex gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>Contraseña actualizada correctamente.</p>
+                </div>
+              )}
+              <form action={handleSetPassword} className="space-y-3">
+                <Input
+                  name="password"
+                  type="text"
+                  placeholder="Nueva contraseña"
+                  minLength={8}
+                  required
+                />
+                <Button type="submit" variant="secondary" className="w-full">
+                  Guardar contraseña
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card className="border-destructive/40">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base text-destructive">
+                <Trash2 className="h-4 w-4" />
+                Zona peligrosa
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Eliminar este usuario borra su cuenta y acceso permanentemente. Sus solicitudes
+                quedan registradas en el sistema.
+              </p>
+              {(profile.role === "admin" || profile.role === "superadmin") && !isSuperAdmin ? (
+                <p className="rounded-md bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+                  Solo un superadministrador puede eliminar administradores.
+                </p>
+              ) : (
+                <form action={handleDelete}>
+                  <Button type="submit" variant="destructive" className="w-full">
+                    Eliminar usuario
+                  </Button>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
