@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdmin, getCurrentProfile } from "@/lib/auth";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getUserEmailsMap } from "@/lib/supabase/users-cache";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { UserPlus, Pencil } from "lucide-react";
@@ -35,8 +36,9 @@ export default async function UsuariosPage({ searchParams }: Props) {
     `)
     .order("created_at", { ascending: false });
 
-  const { data: authUsers } = await adminClient.auth.admin.listUsers();
-  const emailMap = new Map(authUsers?.users?.map((u) => [u.id, u.email]) ?? []);
+  // Cacheado con TTL de 5 min — listUsers es lento y los emails cambian rara vez
+  const emailsObj = await getUserEmailsMap();
+  const emailMap = new Map(Object.entries(emailsObj));
 
   const successMsg = params.invited
     ? "Invitación enviada correctamente."

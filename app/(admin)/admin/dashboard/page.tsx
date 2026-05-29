@@ -398,7 +398,7 @@ export default async function AdminDashboardPage({ searchParams }: DashboardProp
       .order("updated_at", { ascending: false }),
     admin
       .from("finance_entries")
-      .select("*")
+      .select("id, kind, category, cost_type, amount, entry_date, is_settled, settled_at, request_id, organization_id")
       .order("entry_date", { ascending: false }),
     admin
       .from("time_entries")

@@ -24,6 +24,7 @@ import { getEffectiveModules, filterModulesForRole } from "@/lib/modules/default
 import { ModuleSwitch } from "@/components/modules/ModuleSwitch";
 import type { FormSchema } from "@/lib/form-schema/types";
 import type { ServiceModuleConfig, FileWithUrl, ExpeditionDocument, ModulePageData } from "@/lib/modules/types";
+import { batchSignedUrls } from "@/lib/storage/signed-urls";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -55,14 +56,15 @@ export default async function SolicitudDetallePage({ params }: Props) {
     .eq("request_id", id)
     .order("uploaded_at");
 
-  const filesWithUrls: FileWithUrl[] = await Promise.all(
-    (rawFiles ?? []).map(async (f) => {
-      const { data } = await supabase.storage
-        .from("request-uploads")
-        .createSignedUrl(f.storage_path, 900);
-      return { ...f, signedUrl: data?.signedUrl ?? null };
-    }),
+  const filesSignedMap = await batchSignedUrls(
+    supabase,
+    "request-uploads",
+    (rawFiles ?? []).map((f) => f.storage_path),
   );
+  const filesWithUrls: FileWithUrl[] = (rawFiles ?? []).map((f) => ({
+    ...f,
+    signedUrl: filesSignedMap[f.storage_path] ?? null,
+  }));
 
   // ── 3. Mensajes del hilo ─────────────────────────────────────────────────
   const messages = await getRequestMessages(id);
@@ -75,18 +77,16 @@ export default async function SolicitudDetallePage({ params }: Props) {
     .eq("request_id", id)
     .order("uploaded_at");
 
-  const expeditionDocuments: ExpeditionDocument[] = await Promise.all(
-    (rawExpeditionDocs ?? []).map(async (d) => {
-      const { data } = await supabase.storage
-        .from("expedition-docs")
-        .createSignedUrl(d.storage_path, 900);
-      return {
-        ...d,
-        category: d.category as ExpeditionDocument["category"],
-        signedUrl: data?.signedUrl ?? null,
-      };
-    }),
+  const docsSignedMap = await batchSignedUrls(
+    supabase,
+    "expedition-docs",
+    (rawExpeditionDocs ?? []).map((d) => d.storage_path),
   );
+  const expeditionDocuments: ExpeditionDocument[] = (rawExpeditionDocs ?? []).map((d) => ({
+    ...d,
+    category: d.category as ExpeditionDocument["category"],
+    signedUrl: docsSignedMap[d.storage_path] ?? null,
+  }));
 
   // ── 4b. Datos de módulos de proyecto / obra (RLS filtra por visibilidad) ─
   const [
@@ -115,34 +115,30 @@ export default async function SolicitudDetallePage({ params }: Props) {
     supabase.from("expedition_attachments").select("*").eq("request_id", id).order("created_at"),
   ]);
 
-  // Generar signed URLs para fotos y actas con adjuntos
-  const photos = await Promise.all(
-    (rawPhotos ?? []).map(async (p) => {
-      const { data } = await supabase.storage
-        .from("expedition-photos")
-        .createSignedUrl(p.storage_path, 900);
-      return { ...p, signedUrl: data?.signedUrl ?? null };
-    }),
-  );
+  // Generar signed URLs en batch para 3 buckets en paralelo
+  const minutesPaths = (rawMeetingMinutes ?? [])
+    .filter((m) => m.storage_path)
+    .map((m) => m.storage_path as string);
+  const [photosSignedMap, minutesSignedMap, attachmentsSignedMap] = await Promise.all([
+    batchSignedUrls(supabase, "expedition-photos", (rawPhotos ?? []).map((p) => p.storage_path)),
+    batchSignedUrls(supabase, "expedition-docs", minutesPaths),
+    batchSignedUrls(supabase, "expedition-attachments", (rawAttachments ?? []).map((a) => a.storage_path)),
+  ]);
 
-  const meetingMinutes = await Promise.all(
-    (rawMeetingMinutes ?? []).map(async (m) => {
-      if (!m.storage_path) return { ...m, signedUrl: null };
-      const { data } = await supabase.storage
-        .from("expedition-docs")
-        .createSignedUrl(m.storage_path, 900);
-      return { ...m, signedUrl: data?.signedUrl ?? null };
-    }),
-  );
+  const photos = (rawPhotos ?? []).map((p) => ({
+    ...p,
+    signedUrl: photosSignedMap[p.storage_path] ?? null,
+  }));
 
-  const attachments = await Promise.all(
-    (rawAttachments ?? []).map(async (a) => {
-      const { data } = await supabase.storage
-        .from("expedition-attachments")
-        .createSignedUrl(a.storage_path, 900);
-      return { ...a, signedUrl: data?.signedUrl ?? null };
-    }),
-  );
+  const meetingMinutes = (rawMeetingMinutes ?? []).map((m) => ({
+    ...m,
+    signedUrl: m.storage_path ? (minutesSignedMap[m.storage_path] ?? null) : null,
+  }));
+
+  const attachments = (rawAttachments ?? []).map((a) => ({
+    ...a,
+    signedUrl: attachmentsSignedMap[a.storage_path] ?? null,
+  }));
 
   const attachmentsFor = (entityType: "decision" | "incident" | "site_visit", entityId: string) =>
     attachments.filter((a) => a.entity_type === entityType && a.entity_id === entityId);

@@ -11,6 +11,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 
 async function createUser(formData: FormData) {
   "use server";
+  const { revalidateTag } = await import("next/cache");
   const cp = await requireAdmin();
   const isSuperAdmin = cp.role === "superadmin";
 
@@ -53,6 +54,9 @@ async function createUser(formData: FormData) {
   if (profileError) {
     redirect("/admin/usuarios/invitar?error=" + encodeURIComponent("Usuario creado pero error al guardar perfil: " + profileError.message));
   }
+
+  // Invalidar cache de emails para que el nuevo usuario aparezca al instante
+  revalidateTag("user-emails");
 
   redirect("/admin/usuarios?invited=1");
 }

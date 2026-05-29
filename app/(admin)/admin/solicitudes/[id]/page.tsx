@@ -36,6 +36,7 @@ import { EditableProjectName } from "./EditableProjectName";
 import { ProjectTasksPanel } from "./ProjectTasksPanel";
 import type { FinanceEntry } from "@/lib/finance/types";
 import type { TimeEntryWithWorker } from "@/lib/hours/types";
+import { batchSignedUrls } from "@/lib/storage/signed-urls";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Server Actions
@@ -213,29 +214,31 @@ export default async function AdminSolicitudDetallePage({ params, searchParams }
 
   if (!req) notFound();
 
-  // Archivos del formulario inicial (request_files)
-  const { data: files } = await admin
-    .from("request_files")
-    .select("id, field_key, original_filename, mime_type, size_bytes, storage_path, uploaded_at")
-    .eq("request_id", id)
-    .order("uploaded_at");
+  // Cargamos files + expedition docs en paralelo (filtros con índice por request_id)
+  const [filesRes, docsRes] = await Promise.all([
+    admin
+      .from("request_files")
+      .select("id, field_key, original_filename, mime_type, size_bytes, storage_path, uploaded_at")
+      .eq("request_id", id)
+      .order("uploaded_at"),
+    admin
+      .from("expedition_documents")
+      .select("id, request_id, category, label, storage_path, original_filename, mime_type, size_bytes, is_visible_to_client, uploaded_at, internal_notes")
+      .eq("request_id", id)
+      .order("uploaded_at"),
+  ]);
+  const files = filesRes.data;
+  const rawExpeditionDocs = docsRes.data;
 
-  // Documentos del expediente (expedition_documents) — admin ve todos
-  const { data: rawExpeditionDocs } = await admin
-    .from("expedition_documents")
-    .select("id, request_id, category, label, storage_path, original_filename, mime_type, size_bytes, is_visible_to_client, uploaded_at, internal_notes")
-    .eq("request_id", id)
-    .order("uploaded_at");
-
-  // Generar signed URLs para expedition_documents
-  const expeditionDocs = await Promise.all(
-    (rawExpeditionDocs ?? []).map(async (d) => {
-      const { data } = await admin.storage
-        .from("expedition-docs")
-        .createSignedUrl(d.storage_path, 900);
-      return { ...d, signedUrl: data?.signedUrl ?? null };
-    }),
-  );
+  // Las signed URLs sólo hacen falta cuando la pestaña activa muestra los documentos
+  const needsDocsUrls = ["resumen", "cliente", "documentos"].includes(activeTab);
+  const docsSignedMap = needsDocsUrls
+    ? await batchSignedUrls(admin, "expedition-docs", (rawExpeditionDocs ?? []).map((d) => d.storage_path))
+    : {};
+  const expeditionDocs = (rawExpeditionDocs ?? []).map((d) => ({
+    ...d,
+    signedUrl: docsSignedMap[d.storage_path] ?? null,
+  }));
 
   // Trabajadores disponibles para asignación (admins + superadmins)
   const { data: workers } = await admin
@@ -245,7 +248,9 @@ export default async function AdminSolicitudDetallePage({ params, searchParams }
     .order("full_name");
 
   const schema = (req.form_schemas as unknown as { schema: FormSchema })?.schema;
-  const messages = await getRequestMessages(id);
+  // Mensajes sólo se usan en resumen y conversacion — evitamos cargarlos en el resto
+  const needsMessages = activeTab === "resumen" || activeTab === "conversacion";
+  const messages = needsMessages ? await getRequestMessages(id) : [];
   const serviceType = req.service_types as unknown as {
     name: string;
     slug: string;
@@ -254,12 +259,17 @@ export default async function AdminSolicitudDetallePage({ params, searchParams }
   const statusPhases = serviceType?.status_phases ?? [];
   const serviceSlug  = serviceType?.slug ?? null;
 
-  // Apuntes contables del proyecto
-  const { data: financeRows } = await admin
-    .from("finance_entries")
-    .select("*")
-    .eq("request_id", id)
-    .order("entry_date", { ascending: false });
+  // Finanzas y horas — sólo en pestañas que los muestran (o resumen que los resume).
+  const needsFinance = activeTab === "finanzas" || activeTab === "resumen";
+  const needsHours = activeTab === "horas" || activeTab === "finanzas" || activeTab === "resumen";
+
+  const { data: financeRows } = needsFinance
+    ? await admin
+        .from("finance_entries")
+        .select("*")
+        .eq("request_id", id)
+        .order("entry_date", { ascending: false })
+    : { data: [] };
   const financeEntries = (financeRows ?? []) as FinanceEntry[];
 
   // ── Horas imputadas + datos para rentabilidad real ─────────────────────
@@ -267,21 +277,27 @@ export default async function AdminSolicitudDetallePage({ params, searchParams }
     { data: timeRows },
     { data: overheadHoursRows },
     { data: activeIds },
-  ] = await Promise.all([
-    // Horas del propio proyecto
-    admin.from("time_entries")
-      .select("*, profiles:worker_id(full_name)")
-      .eq("request_id", id)
-      .order("entry_date", { ascending: false }),
-    // Horas de overhead (sin proyecto asignado)
-    admin.from("time_entries")
-      .select("hours, hourly_cost_snapshot")
-      .is("request_id", null),
-    // Proyectos activos (status no en draft/cancelled/delivered)
-    admin.from("certificate_requests")
-      .select("id")
-      .not("status", "in", "(draft,cancelled,delivered)"),
-  ]);
+  ] = needsHours
+    ? await Promise.all([
+        // Horas del propio proyecto
+        admin.from("time_entries")
+          .select("*, profiles:worker_id(full_name)")
+          .eq("request_id", id)
+          .order("entry_date", { ascending: false }),
+        // Horas de overhead (sin proyecto asignado)
+        admin.from("time_entries")
+          .select("hours, hourly_cost_snapshot")
+          .is("request_id", null),
+        // Proyectos activos (status no en draft/cancelled/delivered)
+        admin.from("certificate_requests")
+          .select("id")
+          .not("status", "in", "(draft,cancelled,delivered)"),
+      ])
+    : [{ data: [] }, { data: [] }, { data: [] }] as [
+        { data: never[] },
+        { data: never[] },
+        { data: never[] },
+      ];
 
   const timeEntries: TimeEntryWithWorker[] = (timeRows ?? []).map((t) => {
     const prof = (t as { profiles?: { full_name?: string | null } | null }).profiles;
