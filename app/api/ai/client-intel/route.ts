@@ -220,6 +220,7 @@ export async function POST(request: Request) {
     messages: messages2,
     client: ai.client,
     model: ai.model,
+    metadata: finalAnalysisId ? { analysisId: finalAnalysisId } : undefined,
     onComplete: async (fullResponse) => {
       if (finalAnalysisId) {
         // Guardar respuesta

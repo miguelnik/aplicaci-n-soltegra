@@ -18,6 +18,8 @@ interface UseAiStreamReturn {
   isStreaming: boolean;
   /** Error (si lo hay) */
   error: string | null;
+  /** Metadata recibida del servidor (ej: { analysisId }) */
+  metadata: Record<string, unknown> | null;
   /** Enviar un mensaje al endpoint de IA */
   sendMessage: (url: string, body: Record<string, unknown>) => Promise<void>;
   /** Limpiar los mensajes */
@@ -30,6 +32,7 @@ export function useAiStream(): UseAiStreamReturn {
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [metadata, setMetadata] = useState<Record<string, unknown> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const sendMessage = useCallback(async (url: string, body: Record<string, unknown>) => {
@@ -38,7 +41,9 @@ export function useAiStream(): UseAiStreamReturn {
 
     // Añadir el mensaje del usuario
     const userContent = (body.message as string) ?? "";
-    setMessages((prev) => [...prev, { role: "user", content: userContent }]);
+    if (userContent) {
+      setMessages((prev) => [...prev, { role: "user", content: userContent }]);
+    }
 
     // Preparar placeholder del assistant
     setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
@@ -85,7 +90,14 @@ export function useAiStream(): UseAiStreamReturn {
             const parsed = JSON.parse(payload) as {
               content?: string;
               error?: string;
+              meta?: Record<string, unknown>;
             };
+
+            // Metadata del servidor (ej: analysisId)
+            if (parsed.meta) {
+              setMetadata((prev) => ({ ...prev, ...parsed.meta }));
+              continue;
+            }
 
             if (parsed.error) {
               setError(parsed.error);
@@ -127,12 +139,14 @@ export function useAiStream(): UseAiStreamReturn {
   const clearMessages = useCallback(() => {
     setMessages([]);
     setError(null);
+    setMetadata(null);
   }, []);
 
   return {
     messages,
     isStreaming,
     error,
+    metadata,
     sendMessage,
     clearMessages,
     setMessages,

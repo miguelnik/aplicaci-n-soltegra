@@ -72,21 +72,31 @@ interface StreamOptions {
   messages: ChatCompletionMessageParam[];
   client: OpenAI;
   model: string;
+  /** Metadata enviada como primer evento SSE (ej: { analysisId }) */
+  metadata?: Record<string, unknown>;
   /** Callback que recibe la respuesta completa al finalizar el stream */
   onComplete?: (fullResponse: string) => Promise<void>;
 }
 
 /**
  * Crea una Response con SSE streaming de una completación de OpenAI.
- * Formato de cada chunk: `data: {"content":"..."}\n\n`
+ * Si se pasa `metadata`, se envía como primer evento: `data: {"meta":{...}}\n\n`
+ * Cada chunk de contenido: `data: {"content":"..."}\n\n`
  * Al finalizar: `data: [DONE]\n\n`
  */
-export function createAiStream({ messages, client, model, onComplete }: StreamOptions): Response {
+export function createAiStream({ messages, client, model, metadata, onComplete }: StreamOptions): Response {
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
     async start(controller) {
       let fullResponse = "";
+
+      // Enviar metadata como primer evento si existe
+      if (metadata) {
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify({ meta: metadata })}\n\n`),
+        );
+      }
 
       try {
         const completion = await client.chat.completions.create({

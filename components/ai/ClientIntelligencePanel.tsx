@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   Sparkles,
   Send,
@@ -16,6 +17,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useAiStream } from "@/hooks/useAiStream";
+import { formatDistanceToNow, parseISO } from "date-fns";
+import { es } from "date-fns/locale";
 
 interface Props {
   opportunityId?: string | null;
@@ -37,18 +40,70 @@ export function ClientIntelligencePanel({
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const [followUpInput, setFollowUpInput] = useState("");
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
-  const { messages, isStreaming, error, sendMessage, clearMessages } = useAiStream();
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [analysisDate, setAnalysisDate] = useState<string | null>(null);
+  const { messages, isStreaming, error, metadata, sendMessage, clearMessages, setMessages } =
+    useAiStream();
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // Capturar analysisId cuando el servidor lo devuelve via metadata
+  useEffect(() => {
+    if (metadata?.analysisId && typeof metadata.analysisId === "string") {
+      setAnalysisId(metadata.analysisId);
+    }
+  }, [metadata]);
+
+  // Auto-scroll
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Cargar análisis existente al montar
+  const loadExistingAnalysis = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      if (opportunityId) params.set("opportunityId", opportunityId);
+      else if (organizationId) params.set("organizationId", organizationId);
+      else return;
+
+      const res = await fetch(`/api/ai/client-intel/history?${params}`);
+      if (!res.ok) return;
+
+      const data = await res.json();
+      if (data.analysis) {
+        setAnalysisId(data.analysis.id);
+        setHasAnalyzed(true);
+        setAnalysisDate(data.analysis.createdAt);
+        if (data.analysis.clientContext) setClientContext(data.analysis.clientContext);
+        if (data.analysis.clientWebsite) setClientWebsite(data.analysis.clientWebsite);
+
+        // Cargar historial de mensajes
+        if (data.messages && data.messages.length > 0) {
+          setMessages(
+            data.messages.map((m: { role: string; content: string }) => ({
+              role: m.role as "user" | "assistant",
+              content: m.content,
+            })),
+          );
+        }
+      }
+    } catch {
+      // Silenciar — simplemente no carga historial
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, [opportunityId, organizationId, setMessages]);
+
+  useEffect(() => {
+    loadExistingAnalysis();
+  }, [loadExistingAnalysis]);
 
   function handleAnalyze() {
     if (!clientContext.trim() || isStreaming) return;
     clearMessages();
     setHasAnalyzed(true);
     setAnalysisId(null);
+    setAnalysisDate(null);
 
     sendMessage("/api/ai/client-intel", {
       opportunityId: opportunityId ?? null,
@@ -77,22 +132,42 @@ export function ClientIntelligencePanel({
     clearMessages();
     setHasAnalyzed(false);
     setAnalysisId(null);
+    setAnalysisDate(null);
   }
 
-  if (!hasApiKey) {
-    return null; // No mostrar el panel si no hay API key
+  if (!hasApiKey) return null;
+
+  if (loadingHistory) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-8">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Sparkles className="h-4 w-4 text-accent" />
-          Asistente de ventas IA
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Sparkles className="h-4 w-4 text-accent" />
+            Asistente de ventas IA
+          </CardTitle>
+          {analysisDate && (
+            <Badge variant="outline" className="text-[10px]">
+              Analizado{" "}
+              {formatDistanceToNow(parseISO(analysisDate), {
+                addSuffix: true,
+                locale: es,
+              })}
+            </Badge>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Contexto del cliente */}
+        {/* Formulario de contexto del cliente — visible si no hay análisis previo */}
         {!hasAnalyzed && (
           <div className="space-y-3">
             <p className="text-xs text-muted-foreground">
@@ -146,12 +221,17 @@ export function ClientIntelligencePanel({
           </div>
         )}
 
-        {/* Resultados + chat */}
+        {/* Resultados + chat de follow-up */}
         {hasAnalyzed && (
           <div className="space-y-3">
             <div
-              className="max-h-[400px] space-y-3 overflow-y-auto rounded-md border bg-muted/20 p-3"
+              className="max-h-[500px] space-y-3 overflow-y-auto rounded-md border bg-muted/20 p-3"
             >
+              {messages.length === 0 && !isStreaming && (
+                <p className="py-4 text-center text-xs text-muted-foreground">
+                  Sin análisis todavía.
+                </p>
+              )}
               {messages.map((msg, i) => (
                 <div
                   key={i}
@@ -182,7 +262,7 @@ export function ClientIntelligencePanel({
               <div ref={chatEndRef} />
             </div>
 
-            {/* Follow-up */}
+            {/* Follow-up input */}
             <div className="flex gap-2">
               <Textarea
                 value={followUpInput}
@@ -211,6 +291,9 @@ export function ClientIntelligencePanel({
                 )}
               </Button>
             </div>
+            <p className="text-[10px] text-muted-foreground">
+              Ctrl+Enter para enviar · La conversación se guarda automáticamente
+            </p>
 
             <Button variant="outline" size="sm" onClick={handleNewAnalysis}>
               <RotateCcw className="h-3.5 w-3.5" />
