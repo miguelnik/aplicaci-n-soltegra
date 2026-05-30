@@ -17,6 +17,7 @@ import {
   ListChecks,
   Receipt,
   Settings,
+  Sparkles,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,7 @@ const navGroups = [
       { href: "/admin/servicios", label: "Servicios", icon: Briefcase },
       { href: "/admin/usuarios", label: "Usuarios", icon: Users },
       { href: "/admin/ajustes/empresa", label: "Ajustes empresa", icon: Settings, superOnly: true },
+      { href: "/admin/ajustes/ia", label: "Base de conocimiento IA", icon: Sparkles, superOnly: true },
     ],
   },
 ];

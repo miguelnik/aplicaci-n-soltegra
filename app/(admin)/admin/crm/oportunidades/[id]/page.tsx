@@ -12,6 +12,7 @@ import { InteractionTimeline } from "@/components/admin/InteractionTimeline";
 import { OpportunityEditClient } from "./OpportunityEditClient";
 import { NewTaskButton } from "@/components/admin/NewTaskButton";
 import { TaskItem } from "@/components/admin/TaskItem";
+import { ClientIntelligencePanel } from "@/components/ai/ClientIntelligencePanel";
 import {
   STAGE_LABEL, STAGE_COLOR,
   type OpportunityStage, type CrmInteractionWithAuthor,
@@ -74,6 +75,14 @@ export default async function OpportunityDetailPage({ params }: Props) {
     admin.from("service_types").select("id, name").eq("is_active", true).order("display_order").order("name"),
     admin.from("profiles").select("id, full_name").in("role", ["admin", "superadmin"]).order("full_name"),
   ]);
+
+  // Comprobar si hay API key de IA
+  const { data: aiCompany } = await admin
+    .from("company_settings")
+    .select("openai_api_key_encrypted")
+    .limit(1)
+    .maybeSingle();
+  const hasAiApiKey = !!aiCompany?.openai_api_key_encrypted;
 
   // Tareas vinculadas a esta oportunidad
   const { data: oppTasksRaw } = await admin
@@ -282,6 +291,14 @@ export default async function OpportunityDetailPage({ params }: Props) {
           <InteractionTimeline opportunityId={id} interactions={interactions} />
         </CardContent>
       </Card>
+
+      {/* Inteligencia de cliente con IA */}
+      <ClientIntelligencePanel
+        opportunityId={id}
+        organizationId={opp.organization_id}
+        initialContext={opp.notes ?? ""}
+        hasApiKey={hasAiApiKey}
+      />
     </div>
   );
 }

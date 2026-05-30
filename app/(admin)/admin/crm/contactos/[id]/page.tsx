@@ -11,6 +11,7 @@ import { ContactEditClient } from "./ContactEditClient";
 import { ContactNotesEditor } from "./ContactNotesEditor";
 import { NewTaskButton } from "@/components/admin/NewTaskButton";
 import { TaskItem } from "@/components/admin/TaskItem";
+import { ClientIntelligencePanel } from "@/components/ai/ClientIntelligencePanel";
 import {
   STAGE_LABEL, STAGE_COLOR,
   type OpportunityStage, type CrmInteractionWithAuthor,
@@ -70,11 +71,13 @@ export default async function ContactDetailPage({ params }: Props) {
     .eq("contact_id", id)
     .order("updated_at", { ascending: false });
 
-  // Para el editor
-  const [{ data: orgs }, { data: workers }] = await Promise.all([
+  // Para el editor + API key check
+  const [{ data: orgs }, { data: workers }, { data: aiCompany }] = await Promise.all([
     admin.from("organizations").select("id, name").order("name"),
     admin.from("profiles").select("id, full_name").in("role", ["admin", "superadmin"]).order("full_name"),
+    admin.from("company_settings").select("openai_api_key_encrypted").limit(1).maybeSingle(),
   ]);
+  const hasAiApiKey = !!aiCompany?.openai_api_key_encrypted;
 
   // Tareas vinculadas al contacto
   const { data: contactTasksRaw } = await admin
@@ -246,6 +249,15 @@ export default async function ContactDetailPage({ params }: Props) {
           <InteractionTimeline contactId={id} interactions={interactions} />
         </CardContent>
       </Card>
+
+      {/* Inteligencia de cliente con IA (solo si tiene organización) */}
+      {c.organization_id && (
+        <ClientIntelligencePanel
+          organizationId={c.organization_id}
+          initialContext={c.notes ?? ""}
+          hasApiKey={hasAiApiKey}
+        />
+      )}
     </div>
   );
 }

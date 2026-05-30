@@ -139,6 +139,9 @@ export interface CompanySettings {
   legal_notes: string | null;
   default_vat: number;
   budget_prefix: string;
+  // IA
+  openai_api_key_encrypted: string | null;
+  openai_model: string;
   created_at: string;
   updated_at: string;
 }

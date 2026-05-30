@@ -7,16 +7,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
-import { Save } from "lucide-react";
+import { Save, Sparkles, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { updateCompanySettings } from "@/lib/budgets/actions";
+import { updateAiSettings, testAiConnection } from "@/lib/ai/actions";
+import { AI_MODELS } from "@/lib/ai/types";
 import type { CompanySettings } from "@/lib/budgets/types";
 
 interface Props {
   initial: CompanySettings;
+  aiConfig: { hasApiKey: boolean; model: string };
 }
 
-export function CompanySettingsClient({ initial }: Props) {
+export function CompanySettingsClient({ initial, aiConfig }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [s, setS] = useState({
@@ -38,6 +48,13 @@ export function CompanySettingsClient({ initial }: Props) {
     defaultVat: String(initial.default_vat ?? 21),
     budgetPrefix: initial.budget_prefix ?? "PRES",
   });
+
+  // ── Estado IA ────────────────────────────────────────────────────────────
+  const [aiApiKey, setAiApiKey] = useState("");
+  const [aiModel, setAiModel] = useState(aiConfig.model);
+  const [hasExistingKey, setHasExistingKey] = useState(aiConfig.hasApiKey);
+  const [aiPending, startAiTransition] = useTransition();
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   function set<K extends keyof typeof s>(k: K, v: (typeof s)[K]) {
     setS((prev) => ({ ...prev, [k]: v }));
@@ -194,6 +211,137 @@ export function CompanySettingsClient({ initial }: Props) {
           {pending ? "Guardando..." : "Guardar cambios"}
         </Button>
       </div>
+
+      {/* ── Inteligencia Artificial ──────────────────────────────────────── */}
+      <Card className="lg:col-span-2 border-accent/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Sparkles className="h-4 w-4 text-accent" />
+            Inteligencia Artificial
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Configura la conexión con OpenAI para habilitar el asistente comercial y
+            la inteligencia de cliente en el CRM. La clave API se almacena encriptada
+            y nunca se expone al navegador.
+          </p>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-xs">Clave API de OpenAI</Label>
+              <Input
+                type="password"
+                value={aiApiKey}
+                onChange={(e) => {
+                  setAiApiKey(e.target.value);
+                  setTestResult(null);
+                }}
+                placeholder={hasExistingKey ? "sk-...•••• (ya configurada)" : "sk-proj-..."}
+                disabled={aiPending}
+              />
+              {hasExistingKey && !aiApiKey && (
+                <p className="text-[10px] text-green-600">
+                  ✓ Clave configurada. Deja vacío para mantenerla.
+                </p>
+              )}
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Modelo</Label>
+              <Select value={aiModel} onValueChange={setAiModel} disabled={aiPending}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {AI_MODELS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {testResult && (
+            <div
+              className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
+                testResult.ok
+                  ? "bg-green-50 text-green-700 border border-green-200"
+                  : "bg-red-50 text-red-700 border border-red-200"
+              }`}
+            >
+              {testResult.ok ? (
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+              ) : (
+                <XCircle className="h-4 w-4 shrink-0" />
+              )}
+              {testResult.message}
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={aiPending}
+              onClick={() => {
+                startAiTransition(async () => {
+                  // Si hay key nueva, guardarla primero
+                  if (aiApiKey.trim()) {
+                    const saveRes = await updateAiSettings({
+                      apiKey: aiApiKey,
+                      model: aiModel,
+                    });
+                    if (!saveRes.ok) {
+                      setTestResult({ ok: false, message: saveRes.error ?? "Error" });
+                      return;
+                    }
+                    setHasExistingKey(true);
+                    setAiApiKey("");
+                  }
+                  // Probar conexión
+                  const res = await testAiConnection();
+                  setTestResult({
+                    ok: res.ok,
+                    message: res.ok
+                      ? `Conexión exitosa con modelo ${res.model}`
+                      : res.error ?? "Error desconocido",
+                  });
+                });
+              }}
+            >
+              {aiPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              Probar conexión
+            </Button>
+            <Button
+              size="sm"
+              disabled={aiPending || (!aiApiKey.trim() && aiModel === aiConfig.model)}
+              onClick={() => {
+                startAiTransition(async () => {
+                  const res = await updateAiSettings({
+                    apiKey: aiApiKey.trim() || undefined,
+                    model: aiModel,
+                  });
+                  if (!res.ok) {
+                    toast.error(res.error ?? "Error");
+                    return;
+                  }
+                  toast.success("Configuración de IA guardada");
+                  if (aiApiKey.trim()) {
+                    setHasExistingKey(true);
+                    setAiApiKey("");
+                  }
+                  router.refresh();
+                });
+              }}
+            >
+              <Save className="h-4 w-4" />
+              {aiPending ? "Guardando..." : "Guardar IA"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/auth";
 import { TabsNav, type TabItem } from "@/components/admin/TabsNav";
-import { Target, Trello, Layers, Users2, BarChart3, Filter } from "lucide-react";
+import { Target, Trello, Layers, Users2, BarChart3, Filter, Sparkles } from "lucide-react";
 
 const ICON_CLS = "h-3.5 w-3.5";
 
@@ -13,6 +13,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
     { href: "/admin/crm/oportunidades",  label: "Oportunidades", icon: <Layers className={ICON_CLS} /> },
     { href: "/admin/crm/contactos",      label: "Contactos",     icon: <Users2 className={ICON_CLS} /> },
     { href: "/admin/crm/funnel",         label: "Conversión",    icon: <Filter className={ICON_CLS} /> },
+    { href: "/admin/crm/asistente",     label: "Asistente IA",  icon: <Sparkles className={ICON_CLS} /> },
   ];
   if (isSuper) {
     tabs.push({ href: "/admin/crm/comerciales", label: "Comerciales", icon: <BarChart3 className={ICON_CLS} /> });

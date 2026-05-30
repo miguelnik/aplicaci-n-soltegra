@@ -16,6 +16,12 @@ export default async function CompanySettingsPage() {
   const { data } = await admin.from("company_settings").select("*").limit(1).maybeSingle();
   const settings = (data ?? null) as CompanySettings | null;
 
+  // Nunca pasar la API key descifrada al cliente — solo un booleano.
+  const aiConfig = {
+    hasApiKey: !!settings?.openai_api_key_encrypted,
+    model: settings?.openai_model ?? "gpt-4o-mini",
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -25,7 +31,7 @@ export default async function CompanySettingsPage() {
         </p>
       </div>
 
-      {settings && <CompanySettingsClient initial={settings} />}
+      {settings && <CompanySettingsClient initial={settings} aiConfig={aiConfig} />}
     </div>
   );
 }
