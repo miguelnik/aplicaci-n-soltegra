@@ -21,6 +21,8 @@ function TaskSection({
   showAssignee,
   emptyText,
   tone = "default",
+  workers,
+  currentUserId,
 }: {
   title: string;
   description: string;
@@ -28,6 +30,8 @@ function TaskSection({
   showAssignee: boolean;
   emptyText: string;
   tone?: "default" | "rose" | "amber";
+  workers?: Array<{ id: string; full_name: string | null }>;
+  currentUserId?: string;
 }) {
   const toneClass = {
     default: "border-border",
@@ -61,6 +65,8 @@ function TaskSection({
                 item={item}
                 showAssignee={showAssignee}
                 canDelete
+                workers={workers}
+                currentUserId={currentUserId}
               />
             ))}
           </div>
@@ -222,6 +228,8 @@ export default async function TareasPage({ searchParams }: Props) {
           title="Vencidas"
           description="Conviene resolverlas primero."
           items={overdueItems}
+          workers={workers ?? []}
+          currentUserId={me.id}
           showAssignee={scope === "all"}
           emptyText="Nada vencido."
           tone="rose"
@@ -230,6 +238,8 @@ export default async function TareasPage({ searchParams }: Props) {
           title="Hoy"
           description="Trabajo previsto para hoy."
           items={todayTaskItems}
+          workers={workers ?? []}
+          currentUserId={me.id}
           showAssignee={scope === "all"}
           emptyText="Nada programado para hoy."
           tone="amber"
@@ -238,6 +248,8 @@ export default async function TareasPage({ searchParams }: Props) {
           title="Próximas"
           description="Tareas futuras o sin fecha."
           items={upcomingItems}
+          workers={workers ?? []}
+          currentUserId={me.id}
           showAssignee={scope === "all"}
           emptyText={scope === "mine" ? "Sin tareas pendientes." : "No hay tareas pendientes en el equipo."}
         />

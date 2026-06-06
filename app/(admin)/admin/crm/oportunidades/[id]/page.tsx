@@ -277,6 +277,8 @@ export default async function OpportunityDetailPage({ params }: Props) {
                     }}
                     showAssignee
                     canDelete
+                    workers={workers ?? []}
+                    currentUserId={me.id}
                   />
                 );
               })}

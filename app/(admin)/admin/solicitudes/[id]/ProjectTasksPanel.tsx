@@ -70,7 +70,7 @@ export function ProjectTasksPanel({ requestId, currentUserId, workers, tasks }: 
                 request_id: t.request_id,
                 status: t.status === "done" ? "done" : "pending",
               };
-              return <TaskItem key={t.id} item={item} showAssignee canDelete />;
+              return <TaskItem key={t.id} item={item} showAssignee canDelete workers={workers} currentUserId={currentUserId} />;
             })}
           </div>
         )}

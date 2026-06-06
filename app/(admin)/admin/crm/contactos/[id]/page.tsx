@@ -235,6 +235,8 @@ export default async function ContactDetailPage({ params }: Props) {
                     }}
                     showAssignee
                     canDelete
+                    workers={workers ?? []}
+                    currentUserId={me.id}
                   />
                 );
               })}
