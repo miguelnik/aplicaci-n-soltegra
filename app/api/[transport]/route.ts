@@ -3,6 +3,10 @@ import { createMcpHandler } from "mcp-handler";
 
 import { verifyMcpAuth } from "@/lib/mcp/auth";
 import { registerCrmReadTools } from "@/lib/mcp/tools/read-crm";
+import { registerCompanyReadTools } from "@/lib/mcp/tools/read-company";
+import { registerMetricsTools } from "@/lib/mcp/tools/read-metrics";
+import { registerCrmWriteTools } from "@/lib/mcp/tools/write-crm";
+import { registerProjectWriteTools } from "@/lib/mcp/tools/write-projects";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Servidor MCP del CRM Soltegra.
@@ -24,11 +28,14 @@ export const maxDuration = 60;
 
 const mcpHandler = createMcpHandler(
   (server) => {
-    registerCrmReadTools(server);
-    // Próximas fases:
-    //   registerCompanyReadTools(server);
-    //   registerCrmWriteTools(server);
-    //   registerProjectWriteTools(server);  // con dryRun obligatorio
+    // Lectura
+    registerCrmReadTools(server);       // list/get opportunities, contacts
+    registerCompanyReadTools(server);   // orgs, projects, tasks, services, admins
+    registerMetricsTools(server);       // crm_metrics, company_dashboard
+    // Escritura (idempotentes y reversibles)
+    registerCrmWriteTools(server);      // update_stage, add_interaction, create_*…
+    // Escritura crítica con dryRun (doble paso)
+    registerProjectWriteTools(server);  // convert→project, phase, paid, message
   },
   {
     // capabilities (logging, etc.) — vacío de momento.
