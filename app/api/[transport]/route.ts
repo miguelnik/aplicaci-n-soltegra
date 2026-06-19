@@ -41,10 +41,27 @@ const mcpHandler = createMcpHandler(
 );
 
 async function authed(request: Request): Promise<Response> {
-  if (!verifyMcpAuth(request)) {
+  const auth = verifyMcpAuth(request);
+  if (!auth.ok) {
+    // server_misconfigured → 500 (no es culpa del cliente).
+    // missing_header / invalid_token → 401.
+    const status = auth.reason === "server_misconfigured" ? 500 : 401;
+    const message =
+      auth.reason === "server_misconfigured"
+        ? "Server misconfigured"
+        : "Unauthorized";
     return NextResponse.json(
-      { jsonrpc: "2.0", error: { code: -32001, message: "Unauthorized" }, id: null },
-      { status: 401 },
+      {
+        jsonrpc: "2.0",
+        error: {
+          code: -32001,
+          message,
+          // Detalle no sensible — ayuda a diagnosticar 401s sin filtrar el token.
+          data: { reason: auth.reason, detail: auth.detail },
+        },
+        id: null,
+      },
+      { status },
     );
   }
   return mcpHandler(request);
